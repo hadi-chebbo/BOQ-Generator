@@ -1,0 +1,29 @@
+Plan,Trade,Code,Quantity,Unit
+Ground Floor,Plasterboard,PB-10,142.6,m2
+Ground Floor,Plasterboard,PB-13WR,18.2,m2
+Ground Floor,Plasterboard,PB-10,-6.4,m2
+Ground Floor,Plasterboard,CN-90,48.2,m
+First Floor,Plasterboard,PB-10,121.35,m2
+First Floor,plasterboard ,pb-13wr,22.8,M2
+First Floor,Plasterboard,CN-90,41750,mm
+Ground Floor,Carpentry,SK-68,52.1,m
+Ground Floor,Carpentry,DR-820,4,EA
+Ground Floor,Carpentry,AR-66,62.4,m
+First Floor,Carpentry,SK-68,46.9,m
+First Floor,Carpentry,DR-820,5,each
+First Floor,Carpentry,DH-LEV,9,EA
+First Floor,Carpentry,DR-820
+Ground Floor,Electrical,CS-DWN,14,EA
+Ground Floor,Electrical,CS-DWN,0,EA
+First Floor,Electrical,CS-DWN,11,EA
+Ground Floor,Tiling,TL-FLR,24.6,m2
+Ground Floor,Tiling,TL-WALL,31.25,m2
+First Floor,Tiling,TL-WALL,18.7,m
+First Floor,Tiling,TL-FLR,abc,m2
+Ground Floor,Joinery,SB-STONE,3.42,m²
+Ground Floor,Painting,PT-WALL,256.8,m2
+Ground Floor,Painting,PT-CEIL,96.3,m2
+
+First Floor,Painting,PT-WALL,219.4,m2
+First Floor,Painting,PT-CEIL,82.75,m2
+First Floor,Painting,PT-TRIM,40,m

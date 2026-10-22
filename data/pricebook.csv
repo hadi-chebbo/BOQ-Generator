@@ -1,0 +1,15 @@
+Code,Description,Unit,Rate,WastePercent
+PB-10,10mm plasterboard sheet,m2,18.50,10
+PB-13WR,13mm wet-area plasterboard,m2,"$24.80",10%
+CN-90,90mm cove cornice,m,6.20,5
+SK-68,68mm pine skirting,m,"$9.45",5
+AR-66,66mm pine architrave,m,TBC,5
+DR-820,820mm hollow-core door,EA,"$185.00",0
+DH-LEV,Lever door handle set,EA,42.00,
+CS-DWN,LED downlight,EA,"$38.00",5
+TL-FLR,600x600 porcelain floor tile,m2,"$64.00",12
+TL-WALL,300x600 ceramic wall tile,m2,58.50,12
+SB-STONE,20mm stone benchtop,m2,"$1,250.00",15
+PT-WALL,Wall paint (2 coats),m2,8.40,
+PT-CEIL,Ceiling paint (2 coats),m2,7.80,
+CN-90,90mm cove cornice,m,6.75,5
