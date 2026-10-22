@@ -6,40 +6,47 @@ public static class CsvReader
 {
     public static CsvReadResult Read(TextReader text, string fileName, IReadOnlyList<string> requiredColumns)
     {
+        // Excel's "CSV UTF-8" adds an invisible BOM character at the very start of the file.
+        var headerLine = text.ReadLine()?.TrimStart('\uFEFF');
+        var lineNumber = 1;
+
         // The header is the first line that isn't blank.
-        var lineNumber = 0;
-        string? headerLine;
-        do
+        while (headerLine != null && IsBlank(headerLine))
         {
-            // Excel's "CSV UTF-8" adds an invisible BOM character before the first column name.
-            headerLine = text.ReadLine()?.TrimStart('\uFEFF');
+            headerLine = text.ReadLine();
             lineNumber++;
         }
-        while (headerLine != null && IsBlank(headerLine));
 
         if (headerLine == null)
         {
             throw new InputFileException($"{fileName} is empty");
         }
 
-        var columns = ReadHeader(headerLine, fileName, requiredColumns);
+        var columns = ReadColumnPositions(headerLine, lineNumber, fileName, requiredColumns);
         var rows = new List<CsvRow>();
 
         string? line;
         while ((line = text.ReadLine()) != null)
         {
             lineNumber++;
-            var split = CsvLineSplitter.Split(line);
-            rows.Add(new CsvRow(lineNumber, columns, split.Fields));
+            var splitResult = CsvLineSplitter.Split(line);
+            rows.Add(new CsvRow(lineNumber, columns, splitResult.Fields));
         }
 
         return new CsvReadResult(rows);
     }
 
-    // Works out which position each column is in. Throws if a required column is missing or appears twice.
-    private static Dictionary<string, int> ReadHeader(string headerLine, string fileName, IReadOnlyList<string> requiredColumns)
+    // Works out which position each column is in. Throws if the header is unusable.
+    private static Dictionary<string, int> ReadColumnPositions(
+        string headerLine, int lineNumber, string fileName, IReadOnlyList<string> requiredColumns)
     {
-        var names = CsvLineSplitter.Split(headerLine).Fields;
+        var splitResult = CsvLineSplitter.Split(headerLine);
+        if (splitResult.HasQuoteError)
+        {
+            throw new InputFileException($"{fileName}: the header on line {lineNumber} has a badly quoted column name");
+        }
+
+        var names = splitResult.Fields;
         var columns = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         var duplicates = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 

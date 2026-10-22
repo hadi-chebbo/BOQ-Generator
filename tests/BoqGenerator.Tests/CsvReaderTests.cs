@@ -85,4 +85,15 @@ public class CsvReaderTests
         Assert.That(result.Rows[0]["code"], Is.EqualTo("PB-10"));
         Assert.That(result.Rows[0].LineNumber, Is.EqualTo(4));
     }
+
+    [Test]
+    public void Stops_when_the_header_has_a_broken_quote()
+    {
+        var csv = "\nCode,\"Rate\nPB-10,18.50\n";
+
+        var error = Assert.Throws<InputFileException>(() =>
+            CsvReader.Read(new StringReader(csv), "pricebook.csv", new[] { "Code", "Rate" }));
+
+        Assert.That(error.Message, Is.EqualTo("pricebook.csv: the header on line 2 has a badly quoted column name"));
+    }
 }
