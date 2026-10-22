@@ -50,7 +50,25 @@ public class CsvLineSplitterTests
     {
         var result = CsvLineSplitter.Split("PB-13WR,\"$24.80,m2");
 
-        Assert.That(result.HasUnclosedQuote, Is.True);
+        Assert.That(result.HasQuoteError, Is.True);
+        Assert.That(result.Fields, Is.Empty);
+    }
+
+    [TestCase("DR-24,24\" door,EA", new[] { "DR-24", "24\" door", "EA" })]
+    [TestCase("TL-1,12\" x 24\" tile,m2", new[] { "TL-1", "12\" x 24\" tile", "m2" })]
+    public void Treats_a_quote_in_the_middle_of_a_field_as_text(string line, string[] expected)
+    {
+        var result = CsvLineSplitter.Split(line);
+
+        Assert.That(result.Fields, Is.EqualTo(expected));
+    }
+
+    [Test]
+    public void Reports_a_line_with_text_after_a_closing_quote()
+    {
+        var result = CsvLineSplitter.Split("\"PB-10\"x,m2");
+
+        Assert.That(result.HasQuoteError, Is.True);
         Assert.That(result.Fields, Is.Empty);
     }
 }

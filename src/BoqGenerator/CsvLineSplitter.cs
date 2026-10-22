@@ -2,15 +2,18 @@ using System.Text;
 
 namespace BoqGenerator;
 
-public sealed record SplitResult(IReadOnlyList<string> Fields, bool HasUnclosedQuote);
+public sealed record SplitResult(IReadOnlyList<string> Fields, bool HasQuoteError);
 
 public static class CsvLineSplitter
 {
+    private static readonly SplitResult QuoteError = new(Array.Empty<string>(), HasQuoteError: true);
+
     public static SplitResult Split(string line)
     {
         var fields = new List<string>();
         var current = new StringBuilder();
         var inQuotes = false;
+        var quoteJustClosed = false;
 
         for (var i = 0; i < line.Length; i++)
         {
@@ -21,14 +24,24 @@ public static class CsvLineSplitter
                 current.Append('"');
                 i++;
             }
-            else if (c == '"')
+            else if (c == '"' && inQuotes)
             {
-                inQuotes = !inQuotes;
+                inQuotes = false;
+                quoteJustClosed = true;
+            }
+            else if (c == '"' && string.IsNullOrWhiteSpace(current.ToString()))
+            {
+                inQuotes = true;
             }
             else if (c == ',' && !inQuotes)
             {
                 fields.Add(current.ToString().Trim());
                 current.Clear();
+                quoteJustClosed = false;
+            }
+            else if (quoteJustClosed && !char.IsWhiteSpace(c))
+            {
+                return QuoteError;
             }
             else
             {
@@ -38,10 +51,10 @@ public static class CsvLineSplitter
 
         if (inQuotes)
         {
-            return new SplitResult(Array.Empty<string>(), HasUnclosedQuote: true);
+            return QuoteError;
         }
 
         fields.Add(current.ToString().Trim());
-        return new SplitResult(fields, HasUnclosedQuote: false);
+        return new SplitResult(fields, HasQuoteError: false);
     }
 }
