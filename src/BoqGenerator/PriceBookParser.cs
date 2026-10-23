@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.RegularExpressions;
 
 namespace BoqGenerator;
 
@@ -7,6 +8,10 @@ public sealed record PriceBookParseResult(PriceBook PriceBook, IReadOnlyList<Pro
 public static class PriceBookParser
 {
     private static readonly string[] RequiredColumns = { "Code", "Description", "Unit", "Rate", "WastePercent" };
+
+    // A number with an optional $ and optional thousands commas: 18.50, $24.80, $1,250.00.
+    // Commas must be in groups of three, so "18,50" isn't read as 1850.
+    private static readonly Regex RateFormat = new(@"^-?(\$\s*)?(\d{1,3}(,\d{3})+|\d+)(\.\d+)?$");
 
     public static PriceBookParseResult Parse(TextReader text, string fileName)
     {
@@ -17,18 +22,25 @@ public static class PriceBookParser
         foreach (var row in csv.Rows)
         {
             var code = row["Code"];
-            var rateText = row["Rate"];
-            if (!TryParseNumber(rateText, out var rate))
+            Problem RowProblem(Severity severity, string message) =>
+                new(fileName, row.LineNumber, severity, $"{code}: {message}");
+
+            if (ReadRate(row["Rate"], out var rate) is { } rateError)
             {
-                problems.Add(new Problem(fileName, row.LineNumber, Severity.Error, $"{code}: rate \"{rateText}\" is not a number"));
+                problems.Add(RowProblem(Severity.Error, rateError));
                 continue;
             }
 
-            var wasteText = row["WastePercent"];
-            if (!TryParseWastePercent(wasteText, out var wastePercent))
+            if (ReadWastePercent(row["WastePercent"], out var wastePercent) is { } wasteError)
             {
-                problems.Add(new Problem(fileName, row.LineNumber, Severity.Error, $"{code}: waste % \"{wasteText}\" is not a number"));
+                problems.Add(RowProblem(Severity.Error, wasteError));
                 continue;
+            }
+
+            // Warnings come after every error check, so an item that is left out only gets its error.
+            if (rate == 0)
+            {
+                problems.Add(RowProblem(Severity.Warning, "rate is 0"));
             }
 
             items.Add(new PriceItem(code, row["Description"], row["Unit"], rate, wastePercent, row.LineNumber));
@@ -37,20 +49,43 @@ public static class PriceBookParser
         return new PriceBookParseResult(new PriceBook(items), problems);
     }
 
-    // A blank waste % means no waste.
-    private static bool TryParseWastePercent(string text, out decimal wastePercent)
+    // Returns why the rate can't be used, or null if it can.
+    private static string? ReadRate(string text, out decimal rate)
     {
+        rate = 0m;
         if (text.Length == 0)
         {
-            wastePercent = 0m;
-            return true;
+            return "rate is empty";
         }
 
-        return TryParseNumber(text, out wastePercent);
+        var withoutFormatting = text.Replace("$", "").Replace(",", "").Replace(" ", "");
+        if (!RateFormat.IsMatch(text) || !TryParseNumber(withoutFormatting, out rate))
+        {
+            return $"rate \"{text}\" is not a number";
+        }
+
+        if (rate < 0)
+        {
+            return $"rate \"{text}\" is negative";
+        }
+
+        return null;
     }
 
-    // Plain numbers only, like 18.50, for now: ticket 6 adds "$24.80" and "$1,250.00", ticket 7 adds "10%".
-    // No thousands separators, so "18,50" can't be read as 1850.
+    // Returns why the waste % can't be used, or null if it can. A blank waste % means no waste.
+    private static string? ReadWastePercent(string text, out decimal wastePercent)
+    {
+        wastePercent = 0m;
+        if (text.Length == 0)
+        {
+            return null;
+        }
+
+        // Plain numbers only, like 10, for now: ticket 7 adds "10%" and the 0-100 range.
+        return TryParseNumber(text, out wastePercent) ? null : $"waste % \"{text}\" is not a number";
+    }
+
+    // A plain decimal like 18.50 or -3, with no symbols or separators.
     private static bool TryParseNumber(string text, out decimal number) =>
         decimal.TryParse(text, NumberStyles.AllowDecimalPoint | NumberStyles.AllowLeadingSign,
             CultureInfo.InvariantCulture, out number);

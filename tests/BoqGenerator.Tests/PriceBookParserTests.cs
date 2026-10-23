@@ -102,4 +102,86 @@ public class PriceBookParserTests
         Assert.That(result.PriceBook.TryFind("PB-10", out var item), Is.True);
         Assert.That(item.Rate, Is.EqualTo(18.50m));
     }
+
+    [TestCase("24.80", 24.80)]
+    [TestCase("$24.80", 24.80)]
+    [TestCase("$1,250.00", 1250.00)]
+    [TestCase("1,250.00", 1250.00)]
+    [TestCase("$12,500", 12500)]
+    [TestCase("$ 24.80", 24.80)]
+    [TestCase("18.505", 18.505)]
+    public void Reads_a_rate_written_with_a_dollar_sign_or_thousands_commas(string rateText, decimal expected)
+    {
+        var result = Parse(Header + $"SB-STONE,20mm stone benchtop,m2,\"{rateText}\",15\n");
+
+        result.PriceBook.TryFind("SB-STONE", out var item);
+        Assert.That(item.Rate, Is.EqualTo(expected));
+        Assert.That(result.Problems, Is.Empty);
+    }
+
+    [TestCase("18,50")]
+    [TestCase("AUD 18")]
+    [TestCase("1,25,000")]
+    [TestCase("$")]
+    [TestCase("18.50.1")]
+    public void Leaves_out_and_reports_a_rate_that_is_not_a_number(string rateText)
+    {
+        var result = Parse(Header + $"CN-90,90mm cove cornice,m,\"{rateText}\",5\n");
+
+        Assert.That(result.PriceBook.TryFind("CN-90", out _), Is.False);
+        Assert.That(result.Problems, Is.EqualTo(new[]
+        {
+            new Problem("pricebook.csv", 2, Severity.Error, $"CN-90: rate \"{rateText}\" is not a number"),
+        }));
+    }
+
+    [Test]
+    public void Leaves_out_and_reports_an_empty_rate()
+    {
+        var result = Parse(Header + "CN-90,90mm cove cornice,m,,5\n");
+
+        Assert.That(result.PriceBook.TryFind("CN-90", out _), Is.False);
+        Assert.That(result.Problems, Is.EqualTo(new[]
+        {
+            new Problem("pricebook.csv", 2, Severity.Error, "CN-90: rate is empty"),
+        }));
+    }
+
+    [TestCase("-6.20")]
+    [TestCase("-$6.20")]
+    public void Leaves_out_and_reports_a_negative_rate(string rateText)
+    {
+        var result = Parse(Header + $"CN-90,90mm cove cornice,m,{rateText},5\n");
+
+        Assert.That(result.PriceBook.TryFind("CN-90", out _), Is.False);
+        Assert.That(result.Problems, Is.EqualTo(new[]
+        {
+            new Problem("pricebook.csv", 2, Severity.Error, $"CN-90: rate \"{rateText}\" is negative"),
+        }));
+    }
+
+    [TestCase("0")]
+    [TestCase("$0.00")]
+    public void Keeps_but_warns_about_a_rate_of_zero(string rateText)
+    {
+        var result = Parse(Header + $"PT-WALL,Wall paint (2 coats),m2,{rateText},\n");
+
+        Assert.That(result.PriceBook.TryFind("PT-WALL", out var item), Is.True);
+        Assert.That(item.Rate, Is.EqualTo(0m));
+        Assert.That(result.Problems, Is.EqualTo(new[]
+        {
+            new Problem("pricebook.csv", 2, Severity.Warning, "PT-WALL: rate is 0"),
+        }));
+    }
+
+    [Test]
+    public void Reports_only_the_error_when_an_item_with_a_zero_rate_is_left_out()
+    {
+        var result = Parse(Header + "PT-WALL,Wall paint (2 coats),m2,0,lots\n");
+
+        Assert.That(result.Problems, Is.EqualTo(new[]
+        {
+            new Problem("pricebook.csv", 2, Severity.Error, "PT-WALL: waste % \"lots\" is not a number"),
+        }));
+    }
 }
