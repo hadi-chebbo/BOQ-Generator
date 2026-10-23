@@ -312,4 +312,33 @@ public class PriceBookParserTests
             "CN-90: also on lines 2, 3 with a different unit, rate or waste %; code left out",
         }));
     }
+
+    [Test]
+    public void Remembers_a_code_that_was_left_out_and_its_line()
+    {
+        var result = Parse(Header + "PB-10,10mm plasterboard sheet,m2,18.50,10\nAR-66,66mm pine architrave,m,TBC,5\n");
+
+        Assert.That(result.PriceBook.TryFindLeftOut("AR-66", out var lines), Is.True);
+        Assert.That(lines, Is.EqualTo(new[] { 3 }));
+    }
+
+    [TestCase("6.75")]
+    [TestCase("TBC")]
+    public void Remembers_every_line_of_a_duplicate_code_that_was_left_out(string secondRate)
+    {
+        var result = Parse(Header + $"CN-90,90mm cove cornice,m,6.20,5\nPB-10,10mm plasterboard sheet,m2,18.50,10\nCN-90,90mm cove cornice,m,{secondRate},5\n");
+
+        Assert.That(result.PriceBook.TryFindLeftOut(" cn-90 ", out var lines), Is.True);
+        Assert.That(lines, Is.EqualTo(new[] { 2, 4 }));
+    }
+
+    [TestCase("PB-10")]
+    [TestCase("XX-99")]
+    public void Does_not_count_a_used_or_unknown_code_as_left_out(string code)
+    {
+        var result = Parse(Header + "PB-10,10mm plasterboard sheet,m2,18.50,10\n");
+
+        Assert.That(result.PriceBook.TryFindLeftOut(code, out var lines), Is.False);
+        Assert.That(lines, Is.Empty);
+    }
 }

@@ -18,6 +18,7 @@ public static class PriceBookParser
         var csv = CsvReader.Read(text, fileName, RequiredColumns);
         var checkedRows = csv.Rows.Select(row => CheckRow(row, fileName)).ToList();
         var items = new List<PriceItem>();
+        var leftOut = new List<LeftOutCode>();
         var problems = new List<Problem>(csv.Problems);
 
         // Rows with no code can't be copies of anything; they only have their own error.
@@ -35,11 +36,15 @@ public static class PriceBookParser
             {
                 items.Add(decision.Item);
             }
+            else
+            {
+                leftOut.Add(new LeftOutCode(copies.First().Code, copies.Select(copy => copy.Line).ToList()));
+            }
         }
 
         // Grouping by code mixes up the order, so put the problems back in file order.
         var problemsInFileOrder = problems.OrderBy(problem => problem.Line).ToList();
-        return new PriceBookParseResult(new PriceBook(items), problemsInFileOrder);
+        return new PriceBookParseResult(new PriceBook(items, leftOut), problemsInFileOrder);
     }
 
     // What happens to one item code: the price item to use (null if the code is left out) and the problems.
@@ -98,27 +103,27 @@ public static class PriceBookParser
         var code = row["Code"];
         if (code.Length == 0)
         {
-            return Rejected(new Problem(fileName, row.LineNumber, Severity.Error, "item code is empty"));
+            return Unusable(new Problem(fileName, row.LineNumber, Severity.Error, "item code is empty"));
         }
 
         Problem RowProblem(Severity severity, string message) =>
             new(fileName, row.LineNumber, severity, $"{code}: {message}");
-        CheckedRow Rejected(Problem error) => new(code, row.LineNumber, null, new[] { error });
+        CheckedRow Unusable(Problem error) => new(code, row.LineNumber, null, new[] { error });
 
         var unit = row["Unit"];
         if (unit.Length == 0)
         {
-            return Rejected(RowProblem(Severity.Error, "unit is empty"));
+            return Unusable(RowProblem(Severity.Error, "unit is empty"));
         }
 
         if (ReadRate(row["Rate"], out var rate) is { } rateError)
         {
-            return Rejected(RowProblem(Severity.Error, rateError));
+            return Unusable(RowProblem(Severity.Error, rateError));
         }
 
         if (ReadWastePercent(row["WastePercent"], out var wastePercent) is { } wasteError)
         {
-            return Rejected(RowProblem(Severity.Error, wasteError));
+            return Unusable(RowProblem(Severity.Error, wasteError));
         }
 
         // Warnings come after every error check, so an item that is left out only gets its error.
