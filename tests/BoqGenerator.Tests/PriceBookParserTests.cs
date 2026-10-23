@@ -155,26 +155,15 @@ public class PriceBookParserTests
 
     [TestCase("0")]
     [TestCase("$0.00")]
-    public void Keeps_but_warns_about_a_rate_of_zero(string rateText)
+    [TestCase("-0")]
+    public void Leaves_out_and_reports_a_rate_of_zero(string rateText)
     {
         var result = Parse(Header + $"PT-WALL,Wall paint (2 coats),m2,{rateText},\n");
 
-        Assert.That(result.PriceBook.TryFind("PT-WALL", out var item), Is.True);
-        Assert.That(item.Rate, Is.EqualTo(0m));
+        Assert.That(result.PriceBook.TryFind("PT-WALL", out _), Is.False);
         Assert.That(result.Problems, Is.EqualTo(new[]
         {
-            new Problem("pricebook.csv", 2, Severity.Warning, "PT-WALL: rate is 0"),
-        }));
-    }
-
-    [Test]
-    public void Reports_only_the_error_when_an_item_with_a_zero_rate_is_left_out()
-    {
-        var result = Parse(Header + "PT-WALL,Wall paint (2 coats),m2,0,lots\n");
-
-        Assert.That(result.Problems, Is.EqualTo(new[]
-        {
-            new Problem("pricebook.csv", 2, Severity.Error, "PT-WALL: waste % \"lots\" is not a number"),
+            new Problem("pricebook.csv", 2, Severity.Error, "PT-WALL: rate is 0"),
         }));
     }
 

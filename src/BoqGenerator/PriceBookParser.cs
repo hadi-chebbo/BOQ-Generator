@@ -128,11 +128,6 @@ public static class PriceBookParser
 
         // Warnings come after every error check, so an item that is left out only gets its error.
         var warnings = new List<Problem>();
-        if (rate == 0)
-        {
-            warnings.Add(RowProblem(Severity.Warning, "rate is 0"));
-        }
-
         var description = row["Description"];
         if (description.Length == 0)
         {
@@ -161,6 +156,12 @@ public static class PriceBookParser
         if (rate < 0)
         {
             return $"rate \"{text}\" is negative";
+        }
+
+        // A free item is almost always a rate someone forgot to fill in, so it isn't priced.
+        if (rate == 0)
+        {
+            return "rate is 0";
         }
 
         return null;
