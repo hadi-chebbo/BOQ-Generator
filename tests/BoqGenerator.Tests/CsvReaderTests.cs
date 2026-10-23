@@ -96,4 +96,94 @@ public class CsvReaderTests
 
         Assert.That(error.Message, Is.EqualTo("pricebook.csv: the header on line 2 has a badly quoted column name"));
     }
+
+    [Test]
+    public void Reports_no_problems_for_good_rows()
+    {
+        var csv = "Code,Rate\nPB-10,18.50\n";
+
+        var result = CsvReader.Read(new StringReader(csv), "pricebook.csv", new[] { "Code", "Rate" });
+
+        Assert.That(result.Rows, Has.Count.EqualTo(1));
+        Assert.That(result.Problems, Is.Empty);
+    }
+
+    [Test]
+    public void Skips_and_reports_a_row_with_a_broken_quote()
+    {
+        var csv = "Code,Rate\nPB-10,\"18.50\n";
+
+        var result = CsvReader.Read(new StringReader(csv), "pricebook.csv", new[] { "Code", "Rate" });
+
+        Assert.That(result.Rows, Is.Empty);
+        Assert.That(result.Problems, Is.EqualTo(new[]
+        {
+            new Problem("pricebook.csv", 2, Severity.Error, "has a badly quoted value"),
+        }));
+    }
+
+    [TestCase("PB-10,18.50,10\n")]
+    [TestCase("PB-10,18.50,10,,\n")]
+    public void Skips_and_reports_a_row_with_more_values_than_columns(string row)
+    {
+        var csv = "Code,Rate\n" + row;
+
+        var result = CsvReader.Read(new StringReader(csv), "pricebook.csv", new[] { "Code", "Rate" });
+
+        Assert.That(result.Rows, Is.Empty);
+        Assert.That(result.Problems, Is.EqualTo(new[]
+        {
+            new Problem("pricebook.csv", 2, Severity.Error, "has 3 values but the header has 2 columns"),
+        }));
+    }
+
+    [Test]
+    public void Keeps_a_row_whose_extra_values_are_all_empty()
+    {
+        var csv = "Code,Rate\nPB-10,18.50,,\n";
+
+        var result = CsvReader.Read(new StringReader(csv), "pricebook.csv", new[] { "Code", "Rate" });
+
+        Assert.That(result.Rows[0]["rate"], Is.EqualTo("18.50"));
+        Assert.That(result.Problems, Is.Empty);
+    }
+
+    [Test]
+    public void Treats_missing_values_at_the_end_of_a_short_row_as_empty()
+    {
+        var csv = "Plan,Code,Quantity,Unit\nFirst Floor,DR-820\n";
+
+        var result = CsvReader.Read(new StringReader(csv), "measurements.csv", new[] { "Code", "Quantity", "Unit" });
+
+        Assert.That(result.Rows[0]["code"], Is.EqualTo("DR-820"));
+        Assert.That(result.Rows[0]["quantity"], Is.EqualTo(""));
+        Assert.That(result.Rows[0]["unit"], Is.EqualTo(""));
+        Assert.That(result.Problems, Is.Empty);
+    }
+
+    [Test]
+    public void Skips_blank_lines_between_rows_without_reporting_them()
+    {
+        var csv = "Code,Rate\nPB-10,18.50\n\n , ,\nPB-13,24.80\n";
+
+        var result = CsvReader.Read(new StringReader(csv), "pricebook.csv", new[] { "Code", "Rate" });
+
+        Assert.That(result.Rows.Select(row => row.LineNumber), Is.EqualTo(new[] { 2, 5 }));
+        Assert.That(result.Problems, Is.Empty);
+    }
+
+    [Test]
+    public void Keeps_reading_after_a_bad_row()
+    {
+        var csv = "Code,Rate\nPB-10,\"18.50\nSB-STONE,$1,250.00\nPB-13,24.80\n";
+
+        var result = CsvReader.Read(new StringReader(csv), "pricebook.csv", new[] { "Code", "Rate" });
+
+        Assert.That(result.Rows.Select(row => row["code"]), Is.EqualTo(new[] { "PB-13" }));
+        Assert.That(result.Problems, Is.EqualTo(new[]
+        {
+            new Problem("pricebook.csv", 2, Severity.Error, "has a badly quoted value"),
+            new Problem("pricebook.csv", 3, Severity.Error, "has 3 values but the header has 2 columns"),
+        }));
+    }
 }
