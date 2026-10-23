@@ -16,6 +16,10 @@ _Avoid_: Entry, product, price book row
 Identifies what is being measured, e.g. PB-10 for 10 mm plasterboard. Two codes are the same if they match ignoring case and surrounding spaces.
 _Avoid_: SKU, product code
 
+**Duplicate code**:
+An item code that appears on more than one row of the price book. Each of those rows is a copy of the code.
+_Avoid_: Double entry, repeated item
+
 **Rate**:
 The price per unit in Australian dollars, excluding GST.
 _Avoid_: Price, cost

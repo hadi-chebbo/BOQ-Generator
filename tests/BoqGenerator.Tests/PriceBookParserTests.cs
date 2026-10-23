@@ -52,12 +52,17 @@ public class PriceBookParserTests
     }
 
     [Test]
-    public void Keeps_the_first_copy_of_a_code_that_appears_twice()
+    public void Leaves_out_a_code_whose_copies_have_different_prices()
     {
-        var result = Parse(Header + "CN-90,90mm cove cornice,m,6.20,5\ncn-90,90mm cove cornice,m,6.75,5\n");
+        var result = Parse(Header + "CN-90,90mm cove cornice,m,6.20,5\nPB-10,10mm plasterboard sheet,m2,18.50,10\ncn-90,90mm cove cornice,m,6.75,5\n");
 
-        result.PriceBook.TryFind("CN-90", out var item);
-        Assert.That(item.Rate, Is.EqualTo(6.20m));
+        Assert.That(result.PriceBook.TryFind("CN-90", out _), Is.False);
+        Assert.That(result.PriceBook.TryFind("PB-10", out _), Is.True);
+        Assert.That(result.Problems, Is.EqualTo(new[]
+        {
+            new Problem("pricebook.csv", 2, Severity.Error, "CN-90: also on line 4 with a different unit, rate or waste %; code left out"),
+            new Problem("pricebook.csv", 4, Severity.Error, "cn-90: also on line 2 with a different unit, rate or waste %; code left out"),
+        }));
     }
 
     [Test]
@@ -264,6 +269,47 @@ public class PriceBookParserTests
         Assert.That(result.Problems, Is.EqualTo(new[]
         {
             new Problem("pricebook.csv", 2, Severity.Error, "AR-66: rate \"TBC\" is not a number"),
+        }));
+    }
+
+    [TestCase("CN-90,90mm cove cornice,m,6.20,5")]
+    [TestCase("CN-90,Cove cornice 90,M,$6.2,5%")]
+    public void Keeps_the_first_of_identical_copies_and_warns_about_the_rest(string secondCopy)
+    {
+        var result = Parse(Header + "CN-90,90mm cove cornice,m,6.20,5\n" + secondCopy + "\n");
+
+        Assert.That(result.PriceBook.TryFind("CN-90", out var item), Is.True);
+        Assert.That(item, Is.EqualTo(new PriceItem("CN-90", "90mm cove cornice", "m", 6.20m, 5m, Line: 2)));
+        Assert.That(result.Problems, Is.EqualTo(new[]
+        {
+            new Problem("pricebook.csv", 3, Severity.Warning, "CN-90: repeats line 2; line 2 is used"),
+        }));
+    }
+
+    [Test]
+    public void Leaves_out_a_code_when_any_copy_cannot_be_used()
+    {
+        var result = Parse(Header + "CN-90,90mm cove cornice,m,6.20,5\nCN-90,90mm cove cornice,m,TBC,5\n");
+
+        Assert.That(result.PriceBook.TryFind("CN-90", out _), Is.False);
+        Assert.That(result.Problems, Is.EqualTo(new[]
+        {
+            new Problem("pricebook.csv", 2, Severity.Error, "CN-90: also on line 3, which can't be used; code left out"),
+            new Problem("pricebook.csv", 3, Severity.Error, "CN-90: rate \"TBC\" is not a number"),
+        }));
+    }
+
+    [Test]
+    public void Names_every_other_copy_when_a_code_appears_three_times()
+    {
+        var result = Parse(Header + "CN-90,Cornice,m,6.20,5\nCN-90,Cornice,m,6.20,5\nCN-90,Cornice,m,6.75,5\n");
+
+        Assert.That(result.PriceBook.TryFind("CN-90", out _), Is.False);
+        Assert.That(result.Problems.Select(problem => problem.Message), Is.EqualTo(new[]
+        {
+            "CN-90: also on lines 3, 4 with a different unit, rate or waste %; code left out",
+            "CN-90: also on lines 2, 4 with a different unit, rate or waste %; code left out",
+            "CN-90: also on lines 2, 3 with a different unit, rate or waste %; code left out",
         }));
     }
 }
