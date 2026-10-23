@@ -22,8 +22,21 @@ public static class PriceBookParser
         foreach (var row in csv.Rows)
         {
             var code = row["Code"];
+            if (code.Length == 0)
+            {
+                problems.Add(new Problem(fileName, row.LineNumber, Severity.Error, "item code is empty"));
+                continue;
+            }
+
             Problem RowProblem(Severity severity, string message) =>
                 new(fileName, row.LineNumber, severity, $"{code}: {message}");
+
+            var unit = row["Unit"];
+            if (unit.Length == 0)
+            {
+                problems.Add(RowProblem(Severity.Error, "unit is empty"));
+                continue;
+            }
 
             if (ReadRate(row["Rate"], out var rate) is { } rateError)
             {
@@ -43,7 +56,13 @@ public static class PriceBookParser
                 problems.Add(RowProblem(Severity.Warning, "rate is 0"));
             }
 
-            items.Add(new PriceItem(code, row["Description"], row["Unit"], rate, wastePercent, row.LineNumber));
+            var description = row["Description"];
+            if (description.Length == 0)
+            {
+                problems.Add(RowProblem(Severity.Warning, "description is empty"));
+            }
+
+            items.Add(new PriceItem(code, description, unit, rate, wastePercent, row.LineNumber));
         }
 
         return new PriceBookParseResult(new PriceBook(items), problems);

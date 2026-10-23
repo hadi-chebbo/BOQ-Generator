@@ -217,4 +217,53 @@ public class PriceBookParserTests
             new Problem("pricebook.csv", 2, Severity.Error, $"PB-13WR: waste % \"{wasteText}\" is not a number"),
         }));
     }
+
+    [Test]
+    public void Leaves_out_and_reports_an_item_with_no_code()
+    {
+        var result = Parse(Header + ",10mm plasterboard sheet,m2,18.50,10\n");
+
+        Assert.That(result.PriceBook.TryFind("", out _), Is.False);
+        Assert.That(result.Problems, Is.EqualTo(new[]
+        {
+            new Problem("pricebook.csv", 2, Severity.Error, "item code is empty"),
+        }));
+    }
+
+    [TestCase("")]
+    [TestCase("   ")]
+    public void Leaves_out_and_reports_an_item_with_no_unit(string unit)
+    {
+        var result = Parse(Header + $"PB-10,10mm plasterboard sheet,{unit},18.50,10\n");
+
+        Assert.That(result.PriceBook.TryFind("PB-10", out _), Is.False);
+        Assert.That(result.Problems, Is.EqualTo(new[]
+        {
+            new Problem("pricebook.csv", 2, Severity.Error, "PB-10: unit is empty"),
+        }));
+    }
+
+    [Test]
+    public void Keeps_but_warns_about_an_item_with_no_description()
+    {
+        var result = Parse(Header + "PB-10,,m2,18.50,10\n");
+
+        Assert.That(result.PriceBook.TryFind("PB-10", out var item), Is.True);
+        Assert.That(item.Description, Is.EqualTo(""));
+        Assert.That(result.Problems, Is.EqualTo(new[]
+        {
+            new Problem("pricebook.csv", 2, Severity.Warning, "PB-10: description is empty"),
+        }));
+    }
+
+    [Test]
+    public void Reports_only_the_error_when_an_item_with_no_description_is_left_out()
+    {
+        var result = Parse(Header + "AR-66,,m,TBC,5\n");
+
+        Assert.That(result.Problems, Is.EqualTo(new[]
+        {
+            new Problem("pricebook.csv", 2, Severity.Error, "AR-66: rate \"TBC\" is not a number"),
+        }));
+    }
 }
