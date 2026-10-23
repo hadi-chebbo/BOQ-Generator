@@ -52,18 +52,6 @@ public class PriceBookParserTests
     }
 
     [Test]
-    public void Leaves_out_and_reports_an_item_whose_waste_percent_is_not_a_number()
-    {
-        var result = Parse(Header + "TL-FLR,600x600 porcelain floor tile,m2,64.00,lots\n");
-
-        Assert.That(result.PriceBook.TryFind("TL-FLR", out _), Is.False);
-        Assert.That(result.Problems, Is.EqualTo(new[]
-        {
-            new Problem("pricebook.csv", 2, Severity.Error, "TL-FLR: waste % \"lots\" is not a number"),
-        }));
-    }
-
-    [Test]
     public void Keeps_the_first_copy_of_a_code_that_appears_twice()
     {
         var result = Parse(Header + "CN-90,90mm cove cornice,m,6.20,5\ncn-90,90mm cove cornice,m,6.75,5\n");
@@ -182,6 +170,51 @@ public class PriceBookParserTests
         Assert.That(result.Problems, Is.EqualTo(new[]
         {
             new Problem("pricebook.csv", 2, Severity.Error, "PT-WALL: waste % \"lots\" is not a number"),
+        }));
+    }
+
+    [TestCase("10", 10)]
+    [TestCase("10%", 10)]
+    [TestCase("10 %", 10)]
+    [TestCase("12.5%", 12.5)]
+    [TestCase("0", 0)]
+    [TestCase("100", 100)]
+    public void Reads_a_waste_percent_with_or_without_a_percent_sign(string wasteText, decimal expected)
+    {
+        var result = Parse(Header + $"PB-13WR,13mm wet-area plasterboard,m2,24.80,{wasteText}\n");
+
+        result.PriceBook.TryFind("PB-13WR", out var item);
+        Assert.That(item.WastePercent, Is.EqualTo(expected));
+        Assert.That(result.Problems, Is.Empty);
+    }
+
+    [TestCase("-5")]
+    [TestCase("-5%")]
+    [TestCase("100.5")]
+    [TestCase("150%")]
+    public void Leaves_out_and_reports_a_waste_percent_outside_0_to_100(string wasteText)
+    {
+        var result = Parse(Header + $"PB-13WR,13mm wet-area plasterboard,m2,24.80,{wasteText}\n");
+
+        Assert.That(result.PriceBook.TryFind("PB-13WR", out _), Is.False);
+        Assert.That(result.Problems, Is.EqualTo(new[]
+        {
+            new Problem("pricebook.csv", 2, Severity.Error, $"PB-13WR: waste % \"{wasteText}\" is not between 0 and 100"),
+        }));
+    }
+
+    [TestCase("%")]
+    [TestCase("10%%")]
+    [TestCase("ten")]
+    [TestCase("lots")]
+    public void Leaves_out_and_reports_a_waste_percent_that_is_not_a_number(string wasteText)
+    {
+        var result = Parse(Header + $"PB-13WR,13mm wet-area plasterboard,m2,24.80,{wasteText}\n");
+
+        Assert.That(result.PriceBook.TryFind("PB-13WR", out _), Is.False);
+        Assert.That(result.Problems, Is.EqualTo(new[]
+        {
+            new Problem("pricebook.csv", 2, Severity.Error, $"PB-13WR: waste % \"{wasteText}\" is not a number"),
         }));
     }
 }

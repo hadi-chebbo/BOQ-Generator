@@ -81,8 +81,19 @@ public static class PriceBookParser
             return null;
         }
 
-        // Plain numbers only, like 10, for now: ticket 7 adds "10%" and the 0-100 range.
-        return TryParseNumber(text, out wastePercent) ? null : $"waste % \"{text}\" is not a number";
+        // "10%" means the same as "10".
+        var withoutPercentSign = text.EndsWith('%') ? text[..^1].TrimEnd() : text;
+        if (!TryParseNumber(withoutPercentSign, out wastePercent))
+        {
+            return $"waste % \"{text}\" is not a number";
+        }
+
+        if (wastePercent is < 0 or > 100)
+        {
+            return $"waste % \"{text}\" is not between 0 and 100";
+        }
+
+        return null;
     }
 
     // A plain decimal like 18.50 or -3, with no symbols or separators.
