@@ -24,6 +24,10 @@ _Avoid_: Double entry, repeated item
 The price per unit in Australian dollars, excluding GST.
 _Avoid_: Price, cost
 
+**Unit**:
+What a quantity or rate is counted in: m2 (square metres), m (metres), mm, cm, or EA (each, a count). Spellings like M2, m² and each mean the same unit. Any other unit, such as kg, only matches itself.
+_Avoid_: Measure, UOM
+
 **Waste %**:
 Extra material allowed for offcuts and breakage. A blank waste % means none.
 _Avoid_: Wastage, allowance
