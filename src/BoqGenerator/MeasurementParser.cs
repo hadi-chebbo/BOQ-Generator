@@ -15,13 +15,25 @@ public static class MeasurementParser
         foreach (var row in csv.Rows)
         {
             var code = row["Code"];
-            var quantityText = row["Quantity"];
+            Problem RowProblem(Severity severity, string message) =>
+                new(fileName, row.LineNumber, severity, $"{code}: {message}");
 
-            // For now any quantity that isn't a plain number is left out. Ticket 13 adds the full quantity rules.
-            if (!NumberReader.TryRead(quantityText, out var quantity))
+            var quantityText = row["Quantity"];
+            if (ReadQuantity(quantityText, out var quantity) is { } quantityError)
             {
-                problems.Add(new Problem(fileName, row.LineNumber, Severity.Error, $"{code}: quantity \"{quantityText}\" is not a number"));
+                problems.Add(RowProblem(Severity.Error, quantityError));
                 continue;
+            }
+
+            // Warnings come after every error check, so a row that is left out only gets its error.
+            if (quantity == 0)
+            {
+                problems.Add(RowProblem(Severity.Warning, "quantity is 0"));
+            }
+
+            if (quantity < 0)
+            {
+                problems.Add(RowProblem(Severity.Warning, $"quantity {quantityText} is a deduction"));
             }
 
             measurements.Add(new Measurement(row["Plan"], row["Trade"], code, quantity, row["Unit"], row.LineNumber));
@@ -30,5 +42,17 @@ public static class MeasurementParser
         // The reader's problems come first in the list, so put everything back in file order.
         var problemsInFileOrder = problems.OrderBy(problem => problem.Line).ToList();
         return new MeasurementParseResult(measurements, problemsInFileOrder);
+    }
+
+    // Returns why the quantity can't be used, or null if it can.
+    private static string? ReadQuantity(string text, out decimal quantity)
+    {
+        quantity = 0m;
+        if (text.Length == 0)
+        {
+            return "quantity is empty";
+        }
+
+        return NumberReader.TryRead(text, out quantity) ? null : $"quantity \"{text}\" is not a number";
     }
 }

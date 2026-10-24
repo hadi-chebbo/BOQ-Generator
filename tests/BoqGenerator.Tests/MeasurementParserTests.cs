@@ -19,15 +19,18 @@ public class MeasurementParserTests
         Assert.That(result.Problems, Is.Empty);
     }
 
-    [Test]
-    public void Leaves_out_and_reports_a_row_whose_quantity_is_not_a_number()
+    [TestCase("abc")]
+    [TestCase("$5")]
+    [TestCase(".5")]
+    [TestCase("18,50")]
+    public void Leaves_out_and_reports_a_row_whose_quantity_is_not_a_number(string quantityText)
     {
-        var result = Parse(Header + "First Floor,Tiling,TL-FLR,abc,m2\nFirst Floor,Tiling,TL-WALL,18.7,m2\n");
+        var result = Parse(Header + $"First Floor,Tiling,TL-FLR,\"{quantityText}\",m2\nFirst Floor,Tiling,TL-WALL,18.7,m2\n");
 
         Assert.That(result.Measurements.Select(measurement => measurement.Code), Is.EqualTo(new[] { "TL-WALL" }));
         Assert.That(result.Problems, Is.EqualTo(new[]
         {
-            new Problem("measurements.csv", 2, Severity.Error, "TL-FLR: quantity \"abc\" is not a number"),
+            new Problem("measurements.csv", 2, Severity.Error, $"TL-FLR: quantity \"{quantityText}\" is not a number"),
         }));
     }
 
@@ -73,6 +76,51 @@ public class MeasurementParserTests
 
         // 27 data rows, minus line 15 (no quantity) and line 22 ("abc").
         Assert.That(result.Measurements, Has.Count.EqualTo(25));
-        Assert.That(result.Problems.Select(problem => problem.Line), Is.EqualTo(new[] { 15, 22 }));
+        Assert.That(result.Problems, Is.EqualTo(new[]
+        {
+            new Problem("measurements.csv", 4, Severity.Warning, "PB-10: quantity -6.4 is a deduction"),
+            new Problem("measurements.csv", 15, Severity.Error, "DR-820: quantity is empty"),
+            new Problem("measurements.csv", 17, Severity.Warning, "CS-DWN: quantity is 0"),
+            new Problem("measurements.csv", 22, Severity.Error, "TL-FLR: quantity \"abc\" is not a number"),
+        }));
+    }
+
+    [Test]
+    public void Leaves_out_and_reports_a_row_with_no_quantity()
+    {
+        var result = Parse(Header + "First Floor,Carpentry,DR-820,,EA\n");
+
+        Assert.That(result.Measurements, Is.Empty);
+        Assert.That(result.Problems, Is.EqualTo(new[]
+        {
+            new Problem("measurements.csv", 2, Severity.Error, "DR-820: quantity is empty"),
+        }));
+    }
+
+    [TestCase("0")]
+    [TestCase("0.00")]
+    [TestCase("-0")]
+    public void Keeps_but_warns_about_a_quantity_of_zero(string quantityText)
+    {
+        var result = Parse(Header + $"Ground Floor,Electrical,CS-DWN,{quantityText},EA\n");
+
+        Assert.That(result.Measurements.Single().Quantity, Is.EqualTo(0m));
+        Assert.That(result.Problems, Is.EqualTo(new[]
+        {
+            new Problem("measurements.csv", 2, Severity.Warning, "CS-DWN: quantity is 0"),
+        }));
+    }
+
+    [TestCase("-6.4", -6.4)]
+    [TestCase("-1,250.5", -1250.5)]
+    public void Keeps_a_negative_quantity_as_a_deduction_and_warns_about_it(string quantityText, decimal expected)
+    {
+        var result = Parse(Header + $"Ground Floor,Plasterboard,PB-10,\"{quantityText}\",m2\n");
+
+        Assert.That(result.Measurements.Single().Quantity, Is.EqualTo(expected));
+        Assert.That(result.Problems, Is.EqualTo(new[]
+        {
+            new Problem("measurements.csv", 2, Severity.Warning, $"PB-10: quantity {quantityText} is a deduction"),
+        }));
     }
 }
