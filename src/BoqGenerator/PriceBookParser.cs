@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Text.RegularExpressions;
 
 namespace BoqGenerator;
 
@@ -8,10 +7,6 @@ public sealed record PriceBookParseResult(PriceBook PriceBook, IReadOnlyList<Pro
 public static class PriceBookParser
 {
     private static readonly string[] RequiredColumns = { "Code", "Description", "Unit", "Rate", "WastePercent" };
-
-    // A number with an optional $ and optional thousands commas: 18.50, $24.80, $1,250.00.
-    // Commas must be in groups of three, so "18,50" isn't read as 1850.
-    private static readonly Regex RateFormat = new(@"^-?(\$\s*)?(\d{1,3}(,\d{3})+|\d+)(\.\d+)?$");
 
     public static PriceBookParseResult Parse(TextReader text, string fileName)
     {
@@ -147,8 +142,7 @@ public static class PriceBookParser
             return "rate is empty";
         }
 
-        var withoutFormatting = text.Replace("$", "").Replace(",", "").Replace(" ", "");
-        if (!RateFormat.IsMatch(text) || !TryParseNumber(withoutFormatting, out rate))
+        if (!NumberReader.TryReadDollars(text, out rate))
         {
             return $"rate \"{text}\" is not a number";
         }
@@ -191,7 +185,8 @@ public static class PriceBookParser
         return null;
     }
 
-    // A plain decimal like 18.50 or -3, with no symbols or separators.
+    // A plain decimal like 18.50 or -3, with no symbols or separators. Only waste % still uses this
+    // looser check (it accepts ".5" and "+5"); whether waste % moves to NumberReader is still to decide.
     private static bool TryParseNumber(string text, out decimal number) =>
         decimal.TryParse(text, NumberStyles.AllowDecimalPoint | NumberStyles.AllowLeadingSign,
             CultureInfo.InvariantCulture, out number);
