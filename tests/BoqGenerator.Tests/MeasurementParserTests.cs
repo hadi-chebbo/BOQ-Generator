@@ -215,4 +215,56 @@ public class MeasurementParserTests
 
         Assert.That(result.Measurements.Single().Unit.Name, Is.EqualTo(expectedName));
     }
+
+    [TestCase("4.5", "EA")]
+    [TestCase("4.5", "each")]
+    [TestCase("4.5", "nr")]
+    [TestCase("0.25", "ea")]
+    public void Leaves_out_and_reports_a_count_that_is_not_a_whole_number(string quantityText, string unit)
+    {
+        var result = Parse(Header + $"Ground Floor,Carpentry,DR-820,{quantityText},{unit}\n");
+
+        Assert.That(result.Measurements, Is.Empty);
+        Assert.That(result.Problems, Is.EqualTo(new[]
+        {
+            new Problem("measurements.csv", 2, Severity.Error, $"DR-820: {quantityText} EA is not a whole number"),
+        }));
+    }
+
+    [TestCase("4", "EA")]
+    [TestCase("4.0", "each")]
+    [TestCase("142.6", "m2")]
+    [TestCase("4.5", "kg")]
+    public void Accepts_whole_counts_and_fractions_of_units_that_are_not_counts(string quantityText, string unit)
+    {
+        var result = Parse(Header + $"Ground Floor,Carpentry,DR-820,{quantityText},{unit}\n");
+
+        Assert.That(result.Measurements, Has.Count.EqualTo(1));
+        Assert.That(result.Problems, Is.Empty);
+    }
+
+    [Test]
+    public void Reports_only_the_error_for_a_fractional_deduction_of_a_count()
+    {
+        var result = Parse(Header + "Ground Floor,Carpentry,DR-820,-2.5,EA\n");
+
+        Assert.That(result.Measurements, Is.Empty);
+        Assert.That(result.Problems, Is.EqualTo(new[]
+        {
+            new Problem("measurements.csv", 2, Severity.Error, "DR-820: -2.5 EA is not a whole number"),
+        }));
+    }
+
+    [TestCase("Ground Floor,Carpentry,DR-820,4.5,", "DR-820: unit is empty")]
+    [TestCase(",Carpentry,DR-820,4.5,EA", "DR-820: 4.5 EA is not a whole number")]
+    public void Reports_only_the_first_error_for_a_fractional_count_with_other_problems(string row, string expectedMessage)
+    {
+        var result = Parse(Header + row + "\n");
+
+        Assert.That(result.Measurements, Is.Empty);
+        Assert.That(result.Problems, Is.EqualTo(new[]
+        {
+            new Problem("measurements.csv", 2, Severity.Error, expectedMessage),
+        }));
+    }
 }

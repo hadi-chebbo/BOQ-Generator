@@ -15,7 +15,7 @@ so measurements have **no duplicate rule**.
   reader and never reach these checks. Blank lines are skipped.
 
 ### Order of checks on a row
-Errors: Code → Trade → Quantity → Unit. The first Error stops the row, so a row
+Errors: Code → Trade → Quantity → Unit → whole count. The first Error stops the row, so a row
 shows at most one Error.
 Warnings: Plan → zero quantity → deduction. Only reported for rows that are kept.
 A field of only spaces counts as empty.
@@ -35,6 +35,7 @@ A field of only spaces counts as empty.
 | Empty | **Error**, row left out: `DR-820: quantity is empty` |
 | Not a number (`abc`, `$5`, `.5`, `+5`, `18,50`, `1e3`, `12 500`) | **Error**, row left out: `TL-FLR: quantity "abc" is not a number` |
 | `0`, `0.00`, `-0` | **Warning**, row kept: `CS-DWN: quantity is 0` |
+| A fraction in EA (`4.5 EA`) | **Error**, row left out (see Unit below) |
 | Negative (`-6.4`, `-1,250.5`) | **Warning**, row kept as a **deduction**: `PB-10: quantity -6.4 is a deduction` |
 
 - Same number rule as rates, without the `$` (`NumberReader.TryRead`): thousands
@@ -46,6 +47,10 @@ A field of only spaces counts as empty.
 - Recognised as a `Unit`: `M2`, `m²` and `sqm` are **m2**, `each` and `nr` are **EA**,
   `lm` is **m**. Any other unit, such as `kg`, is kept as written and only matches itself,
   ignoring case (`KG` = `kg`).
+- A **count** (EA, in any spelling) must be a whole number. Otherwise → **Error**, row left
+  out: `DR-820: 4.5 EA is not a whole number`. `4.0` counts as whole. The value can't be
+  guessed (`4.5` might mean 4, 5 or 45), so the row is reported for the estimator to fix.
+  Only EA is checked; other units like `kg` aren't known to be counts.
 - Empty → **Error**, row left out: `CN-90: unit is empty`. There is no fallback to
   the price book's unit, because the unit decides what the number means
   (`41750` mm is 41.75 m).
@@ -64,9 +69,9 @@ A field of only spaces counts as empty.
   - **Warning**: the row is used, but someone should check it.
 
 ### Left for later slices
-- **Slice 5 (units):** `m2` = `M2` = `m²`, `each` = `EA`, `mm` → `m`, mismatches
-  such as `m` against a price book unit of `m2`, fractional counts like `4.5 EA`.
-- **Slice 6 (BOQ):** codes not in the price book or left out of it, combining rows
+- **Slice 6 (BOQ lines):** converting a measurement to its price item's unit
+  (`mm` → `m`) and reporting mismatches such as `m` against `m2`, using `Unit.TryConvert`;
+  codes not in the price book or left out of it; combining rows
   by trade and code across plans, a combined total that ends up negative.
 
 ### On the sample `measurements.csv`
@@ -92,3 +97,4 @@ Kept for slice 6: `plasterboard ` / `pb-13wr` (line 7), `41750 mm` against a pri
 | `5de607b` | 12: measurements from clean rows | `Measurement`, the first `MeasurementParser.Parse` |
 | `51d0d9f` | 13: quantity problems | `ReadQuantity`, the zero and deduction warnings |
 | `239ef88` | 14: empty code, trade, unit or plan | `CheckRow` and its order of checks |
+| `cbd066e` | 17: parsers use Unit | `Measurement.Unit` is a `Unit` |

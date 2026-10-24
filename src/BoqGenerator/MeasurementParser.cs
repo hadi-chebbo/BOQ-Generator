@@ -56,10 +56,17 @@ public static class MeasurementParser
             return Unusable(RowProblem(Severity.Error, quantityError));
         }
 
-        var unit = row["Unit"];
-        if (unit.Length == 0)
+        var unitText = row["Unit"];
+        if (unitText.Length == 0)
         {
             return Unusable(RowProblem(Severity.Error, "unit is empty"));
+        }
+
+        // A count can't have a fraction, and the right value can't be guessed (4.5 might mean 4, 5 or 45).
+        var unit = Unit.Read(unitText);
+        if (unit.IsCount && decimal.Truncate(quantity) != quantity)
+        {
+            return Unusable(RowProblem(Severity.Error, $"{quantityText} {unit.Name} is not a whole number"));
         }
 
         // Warnings come after every error check, so a row that is left out only gets its error.
@@ -80,7 +87,7 @@ public static class MeasurementParser
             warnings.Add(RowProblem(Severity.Warning, $"quantity {quantityText} is a deduction"));
         }
 
-        var measurement = new Measurement(plan, trade, code, quantity, Unit.Read(unit), row.LineNumber);
+        var measurement = new Measurement(plan, trade, code, quantity, unit, row.LineNumber);
         return new CheckedRow(measurement, warnings);
     }
 

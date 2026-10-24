@@ -32,6 +32,9 @@ public sealed record Unit
     // The name shown on the BOQ: m2, m, mm, cm or EA for a known unit, otherwise the unit as written.
     public string Name { get; }
 
+    // Whether this unit counts whole items (EA) rather than measuring an amount.
+    public bool IsCount => this == Each;
+
     public static Unit Read(string text)
     {
         // Spaces inside a known unit don't matter either: "sq m" and "m 2" are both m2.
