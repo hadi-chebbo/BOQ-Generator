@@ -123,4 +123,85 @@ public class MeasurementParserTests
             new Problem("measurements.csv", 2, Severity.Warning, $"PB-10: quantity {quantityText} is a deduction"),
         }));
     }
+
+    [TestCase("")]
+    [TestCase("   ")]
+    public void Leaves_out_and_reports_a_row_with_no_code(string code)
+    {
+        var result = Parse(Header + $"Ground Floor,Plasterboard,{code},142.6,m2\n");
+
+        Assert.That(result.Measurements, Is.Empty);
+        Assert.That(result.Problems, Is.EqualTo(new[]
+        {
+            new Problem("measurements.csv", 2, Severity.Error, "item code is empty"),
+        }));
+    }
+
+    [TestCase("Ground Floor,,PB-10,142.6,m2")]
+    [TestCase("Ground Floor,   ,PB-10,142.6,m2")]
+    [TestCase("Ground Floor,,PB-10,abc,")]
+    public void Leaves_out_and_reports_a_row_with_no_trade(string row)
+    {
+        var result = Parse(Header + row + "\n");
+
+        Assert.That(result.Measurements, Is.Empty);
+        Assert.That(result.Problems, Is.EqualTo(new[]
+        {
+            new Problem("measurements.csv", 2, Severity.Error, "PB-10: trade is empty"),
+        }));
+    }
+
+    [TestCase("")]
+    [TestCase("   ")]
+    public void Leaves_out_and_reports_a_row_with_no_unit(string unit)
+    {
+        var result = Parse(Header + $"First Floor,Plasterboard,CN-90,41750,{unit}\n");
+
+        Assert.That(result.Measurements, Is.Empty);
+        Assert.That(result.Problems, Is.EqualTo(new[]
+        {
+            new Problem("measurements.csv", 2, Severity.Error, "CN-90: unit is empty"),
+        }));
+    }
+
+    [TestCase("")]
+    [TestCase("   ")]
+    public void Keeps_but_warns_about_a_row_with_no_plan(string plan)
+    {
+        var result = Parse(Header + $"{plan},Plasterboard,PB-10,142.6,m2\n");
+
+        Assert.That(result.Measurements, Is.EqualTo(new[]
+        {
+            new Measurement("", "Plasterboard", "PB-10", 142.6m, "m2", Line: 2),
+        }));
+        Assert.That(result.Problems, Is.EqualTo(new[]
+        {
+            new Problem("measurements.csv", 2, Severity.Warning, "PB-10: plan is empty"),
+        }));
+    }
+
+    [Test]
+    public void Reports_only_the_error_when_a_row_with_no_plan_is_left_out()
+    {
+        var result = Parse(Header + ",Plasterboard,PB-10,-6.4,\n");
+
+        Assert.That(result.Measurements, Is.Empty);
+        Assert.That(result.Problems, Is.EqualTo(new[]
+        {
+            new Problem("measurements.csv", 2, Severity.Error, "PB-10: unit is empty"),
+        }));
+    }
+
+    [Test]
+    public void Reports_every_warning_on_a_kept_row_in_a_fixed_order()
+    {
+        var result = Parse(Header + ",Electrical,CS-DWN,0,EA\n");
+
+        Assert.That(result.Measurements, Has.Count.EqualTo(1));
+        Assert.That(result.Problems, Is.EqualTo(new[]
+        {
+            new Problem("measurements.csv", 2, Severity.Warning, "CS-DWN: plan is empty"),
+            new Problem("measurements.csv", 2, Severity.Warning, "CS-DWN: quantity is 0"),
+        }));
+    }
 }
