@@ -34,6 +34,6 @@ public sealed class PriceBook
         return found;
     }
 
-    // The one rule for when two item codes are the same, shared with the parser's duplicate check.
-    internal static string Key(string code) => code.Trim().ToUpperInvariant();
+    // When two item codes are the same, shared with the parser's duplicate check.
+    internal static string Key(string code) => MatchKey.For(code);
 }

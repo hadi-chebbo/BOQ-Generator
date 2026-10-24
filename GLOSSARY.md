@@ -50,6 +50,16 @@ _Avoid_: Category, section
 A measurement with a negative quantity, taking work away, e.g. -6.4 m2 of plasterboard for a window opening.
 _Avoid_: Negative measurement, credit
 
+## Bill of Quantities
+
+**BOQ**:
+Bill of Quantities: the priced list of everything measured, grouped by trade, with totals.
+_Avoid_: Estimate, quote
+
+**BOQ line**:
+One item code in one trade, combining every measurement of it across all plans, priced from its price item.
+_Avoid_: BOQ row, line item
+
 ## Problems
 
 **Problem**:
