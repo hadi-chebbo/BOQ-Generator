@@ -196,4 +196,39 @@ public class BoqBuilderTests
             new Problem("measurements.csv", 2, Severity.Error, "CN-90: no usable price (see pricebook.csv lines 2, 3)"),
         }));
     }
+
+    [Test]
+    public void Converts_a_measurement_to_the_unit_of_its_price()
+    {
+        var result = Build("First Floor,Carpentry,SK-68,41750,mm\n");
+
+        var line = result.Lines.Single();
+        Assert.That(line.Unit, Is.EqualTo(Unit.Read("m")));
+        Assert.That(line.Quantity, Is.EqualTo(41.75m));
+        Assert.That(result.Problems, Is.Empty);
+    }
+
+    [Test]
+    public void Combines_measurements_taken_in_different_length_units()
+    {
+        var result = Build(
+            "Ground Floor,Carpentry,SK-68,48.2,m\n" +
+            "First Floor,Carpentry,SK-68,41750,mm\n" +
+            "First Floor,Carpentry,SK-68,250,cm\n");
+
+        var line = result.Lines.Single();
+        Assert.That(line.Quantity, Is.EqualTo(92.45m));
+        Assert.That(line.MeasurementLines, Is.EqualTo(new[] { 2, 3, 4 }));
+        Assert.That(result.Problems, Is.Empty);
+    }
+
+    [Test]
+    public void Converts_metres_to_a_price_per_millimetre()
+    {
+        var result = Build(
+            "Ground Floor,Joinery,SEAL-1,2.5,m\n",
+            PriceBookHeader + "SEAL-1,Silicone bead,mm,0.02,0\n");
+
+        Assert.That(result.Lines.Single().Quantity, Is.EqualTo(2500m));
+    }
 }
