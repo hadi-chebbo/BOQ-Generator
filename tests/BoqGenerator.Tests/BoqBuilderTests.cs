@@ -231,4 +231,55 @@ public class BoqBuilderTests
 
         Assert.That(result.Lines.Single().Quantity, Is.EqualTo(2500m));
     }
+
+    [Test]
+    public void Leaves_out_and_reports_a_line_whose_total_is_below_zero()
+    {
+        var result = Build(
+            "Ground Floor,Plasterboard,PB-10,40,m2\n" +
+            "First Floor,Plasterboard,PB-10,-50,m2\n");
+
+        Assert.That(result.Lines, Is.Empty);
+        Assert.That(result.Problems, Is.EqualTo(new[]
+        {
+            new Problem("measurements.csv", 2, Severity.Error, "PB-10 in Plasterboard: total -10 m2 is below zero (lines 2, 3); line left out"),
+        }));
+    }
+
+    [TestCase("Ground Floor,Carpentry,SK-68,0,m\n")]
+    [TestCase("Ground Floor,Carpentry,SK-68,5,m\nFirst Floor,Carpentry,SK-68,-5,m\n")]
+    public void Keeps_but_warns_about_a_line_whose_total_is_zero(string rows)
+    {
+        var result = Build(rows);
+
+        Assert.That(result.Lines.Single().Quantity, Is.EqualTo(0m));
+        Assert.That(result.Problems, Is.EqualTo(new[]
+        {
+            new Problem("measurements.csv", 2, Severity.Warning, "SK-68 in Carpentry: total is 0"),
+        }));
+    }
+
+    [Test]
+    public void Writes_a_converted_total_below_zero_without_trailing_zeros()
+    {
+        var result = Build(
+            "Ground Floor,Carpentry,SK-68,1.50,m\n" +
+            "First Floor,Carpentry,SK-68,-2000,mm\n");
+
+        Assert.That(result.Lines, Is.Empty);
+        Assert.That(result.Problems.Single(problem => problem.Severity == Severity.Error).Message,
+            Is.EqualTo("SK-68 in Carpentry: total -0.5 m is below zero (lines 2, 3); line left out"));
+    }
+
+    [Test]
+    public void Warns_about_a_total_that_is_zero_after_converting_units()
+    {
+        var result = Build(
+            "Ground Floor,Carpentry,SK-68,1,m\n" +
+            "First Floor,Carpentry,SK-68,-1000,mm\n");
+
+        Assert.That(result.Lines.Single().Quantity, Is.EqualTo(0m));
+        Assert.That(result.Problems.Single(problem => problem.Message.Contains("total")),
+            Is.EqualTo(new Problem("measurements.csv", 2, Severity.Warning, "SK-68 in Carpentry: total is 0")));
+    }
 }
