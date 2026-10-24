@@ -80,4 +80,40 @@ public class UnitTests
         Assert.That(Unit.Read("kg") != Unit.Read("KG"), Is.False);
         Assert.That(Unit.Read("m") == Unit.Read("m2"), Is.False);
     }
+
+    [TestCase(22.8, "M2", "m2")]
+    [TestCase(3.42, "m\u00B2", "m2")]
+    [TestCase(5, "each", "EA")]
+    [TestCase(10, "KG", "kg")]
+    public void Keeps_the_quantity_when_both_units_are_the_same(decimal quantity, string from, string to)
+    {
+        Assert.That(Unit.TryConvert(quantity, Unit.Read(from), Unit.Read(to), out var converted), Is.True);
+        Assert.That(converted, Is.EqualTo(quantity));
+    }
+
+    [TestCase(41750, "mm", "m", 41.75)]
+    [TestCase(4175, "cm", "m", 41.75)]
+    [TestCase(2.5, "m", "mm", 2500)]
+    [TestCase(2.5, "lm", "cm", 250)]
+    [TestCase(12, "cm", "mm", 120)]
+    [TestCase(1, "mm", "cm", 0.1)]
+    [TestCase(-500, "mm", "m", -0.5)]
+    public void Converts_exactly_between_mm_cm_and_m(decimal quantity, string from, string to, decimal expected)
+    {
+        Assert.That(Unit.TryConvert(quantity, Unit.Read(from), Unit.Read(to), out var converted), Is.True);
+        Assert.That(converted, Is.EqualTo(expected));
+    }
+
+    [TestCase("m", "m2")]
+    [TestCase("mm", "m2")]
+    [TestCase("m2", "m")]
+    [TestCase("EA", "m")]
+    [TestCase("m2", "EA")]
+    [TestCase("kg", "t")]
+    [TestCase("kg", "m")]
+    [TestCase("m", "kg")]
+    public void Refuses_to_convert_between_units_with_no_known_conversion(string from, string to)
+    {
+        Assert.That(Unit.TryConvert(18.7m, Unit.Read(from), Unit.Read(to), out _), Is.False);
+    }
 }
