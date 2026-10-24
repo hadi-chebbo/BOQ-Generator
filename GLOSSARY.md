@@ -28,6 +28,24 @@ _Avoid_: Price, cost
 Extra material allowed for offcuts and breakage. A blank waste % means none.
 _Avoid_: Wastage, allowance
 
+## Measurements
+
+**Measurement**:
+One quantity measured from a plan, for one item code in one trade, e.g. 142.6 m2 of PB-10 on the Ground Floor.
+_Avoid_: Takeoff, measurement row
+
+**Plan**:
+One drawing, usually one floor of the building, e.g. "Ground Floor".
+_Avoid_: Drawing, floor, level
+
+**Trade**:
+A group of related work done by one kind of contractor, e.g. Plasterboard or Tiling. The BOQ is grouped by trade. Two trades are the same if they match ignoring case and surrounding spaces.
+_Avoid_: Category, section
+
+**Deduction**:
+A measurement with a negative quantity, taking work away, e.g. -6.4 m2 of plasterboard for a window opening.
+_Avoid_: Negative measurement, credit
+
 ## Problems
 
 **Problem**:
