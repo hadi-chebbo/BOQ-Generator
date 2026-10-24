@@ -16,7 +16,10 @@ public static class BoqBuilder
 
             if (!priceBook.TryFind(measurement.Code, out var priceItem))
             {
-                problems.Add(MeasurementError("not in the price book"));
+                // A code the price book left out already has its own problem there, so point to it.
+                problems.Add(priceBook.TryFindLeftOut(measurement.Code, out var priceBookLines)
+                    ? MeasurementError($"no usable price (see {priceBookFile} {LineNumbers.Describe(priceBookLines)})")
+                    : MeasurementError("not in the price book"));
                 continue;
             }
 

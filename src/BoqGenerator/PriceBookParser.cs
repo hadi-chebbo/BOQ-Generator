@@ -83,12 +83,7 @@ public static class PriceBookParser
         && a.Rate == b.Rate
         && a.WastePercent == b.WastePercent;
 
-    // "line 4" or "lines 4, 9".
-    private static string LinesText(IEnumerable<CheckedRow> rows)
-    {
-        var lines = rows.Select(row => row.Line).ToList();
-        return (lines.Count == 1 ? "line " : "lines ") + string.Join(", ", lines);
-    }
+    private static string LinesText(IEnumerable<CheckedRow> rows) => LineNumbers.Describe(rows.Select(row => row.Line));
 
     // One price book row after its values are checked: the price item, or null if the row can't be used,
     // plus the row's own problems.

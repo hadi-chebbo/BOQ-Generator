@@ -144,6 +144,14 @@ public class BoqBuilderTests
             "Tiling TL-FLR 24.6 m2",
             "Tiling TL-WALL 31.25 m2",
         }));
+        Assert.That(result.Problems, Is.EqualTo(new[]
+        {
+            new Problem("measurements.csv", 5, Severity.Error, "CN-90: no usable price (see pricebook.csv lines 4, 15)"),
+            new Problem("measurements.csv", 8, Severity.Error, "CN-90: no usable price (see pricebook.csv lines 4, 15)"),
+            new Problem("measurements.csv", 11, Severity.Error, "AR-66: no usable price (see pricebook.csv line 6)"),
+            new Problem("measurements.csv", 21, Severity.Error, "TL-WALL: measured in m but priced per m2"),
+            new Problem("measurements.csv", 29, Severity.Error, "PT-TRIM: not in the price book"),
+        }));
     }
 
     [Test]
@@ -159,6 +167,33 @@ public class BoqBuilderTests
             "carpentry PB-13WR",
             "carpentry SK-68",
             "Plasterboard PB-10",
+        }));
+    }
+
+    [Test]
+    public void Points_to_the_price_book_when_a_code_was_left_out_of_it()
+    {
+        var result = Build(
+            "Ground Floor,Carpentry,AR-66,62.4,m\n",
+            PriceBookHeader + "AR-66,66mm pine architrave,m,TBC,5\n");
+
+        Assert.That(result.Lines, Is.Empty);
+        Assert.That(result.Problems, Is.EqualTo(new[]
+        {
+            new Problem("measurements.csv", 2, Severity.Error, "AR-66: no usable price (see pricebook.csv line 2)"),
+        }));
+    }
+
+    [Test]
+    public void Names_every_price_book_line_of_a_duplicate_code_that_was_left_out()
+    {
+        var result = Build(
+            "Ground Floor,Plasterboard,CN-90,48.2,m\n",
+            PriceBookHeader + "CN-90,90mm cove cornice,m,6.20,5\nCN-90,90mm cove cornice,m,6.75,5\n");
+
+        Assert.That(result.Problems, Is.EqualTo(new[]
+        {
+            new Problem("measurements.csv", 2, Severity.Error, "CN-90: no usable price (see pricebook.csv lines 2, 3)"),
         }));
     }
 }
