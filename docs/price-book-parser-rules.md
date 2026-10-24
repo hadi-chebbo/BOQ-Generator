@@ -72,7 +72,7 @@ Rejected as "not a number": `TBC`, `18,50`, `AUD 18`, `1,25,000`, `$`, `18.50.1`
 
 Two codes are the same if they match **ignoring case and surrounding spaces**
 (`PriceBook.Key`). A code is used only if **every copy is valid and they all
-price the same way**. That means the same unit (ignoring case), the same rate and
+price the same way**. That means the same unit (`m2` = `m²` = `M2`, `EA` = `each`; other units like `kg` ignoring case), the same rate and
 the same waste %. The description doesn't count.
 
 | Situation | Result | Messages |
@@ -99,7 +99,7 @@ the same waste %. The description doesn't count.
     later step say "no usable price, see line 6" instead of "not in the price book".
 - **`Problems`**: the CSV reader's problems plus the parser's, in line order.
 
-A **price item** holds: `Code`, `Description`, `Unit` (as written), `Rate` and
+A **price item** holds: `Code`, `Description`, `Unit` (recognised, so `M2` is m2), `Rate` and
 `WastePercent` (exact decimals), and `Line`.
 
 ## Known limits

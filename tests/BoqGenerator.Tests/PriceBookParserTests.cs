@@ -13,7 +13,7 @@ public class PriceBookParserTests
         var result = Parse(Header + "PB-10,10mm plasterboard sheet,m2,18.50,10\n");
 
         Assert.That(result.PriceBook.TryFind("PB-10", out var item), Is.True);
-        Assert.That(item, Is.EqualTo(new PriceItem("PB-10", "10mm plasterboard sheet", "m2", 18.50m, 10m, Line: 2)));
+        Assert.That(item, Is.EqualTo(new PriceItem("PB-10", "10mm plasterboard sheet", Unit.Read("m2"), 18.50m, 10m, Line: 2)));
         Assert.That(result.Problems, Is.Empty);
     }
 
@@ -268,7 +268,7 @@ public class PriceBookParserTests
         var result = Parse(Header + "CN-90,90mm cove cornice,m,6.20,5\n" + secondCopy + "\n");
 
         Assert.That(result.PriceBook.TryFind("CN-90", out var item), Is.True);
-        Assert.That(item, Is.EqualTo(new PriceItem("CN-90", "90mm cove cornice", "m", 6.20m, 5m, Line: 2)));
+        Assert.That(item, Is.EqualTo(new PriceItem("CN-90", "90mm cove cornice", Unit.Read("m"), 6.20m, 5m, Line: 2)));
         Assert.That(result.Problems, Is.EqualTo(new[]
         {
             new Problem("pricebook.csv", 3, Severity.Warning, "CN-90: repeats line 2; line 2 is used"),
@@ -329,5 +329,30 @@ public class PriceBookParserTests
 
         Assert.That(result.PriceBook.TryFindLeftOut(code, out var lines), Is.False);
         Assert.That(lines, Is.Empty);
+    }
+
+    [TestCase("M2", "m2")]
+    [TestCase("each", "EA")]
+    [TestCase("kg", "kg")]
+    public void Recognises_the_unit_of_a_price_item(string unitText, string expectedName)
+    {
+        var result = Parse(Header + $"PB-10,10mm plasterboard sheet,{unitText},18.50,10\n");
+
+        Assert.That(result.PriceBook.TryFind("PB-10", out var item), Is.True);
+        Assert.That(item.Unit.Name, Is.EqualTo(expectedName));
+    }
+
+    [TestCase("m\u00B2")]
+    [TestCase("sqm")]
+    public void Treats_copies_whose_units_are_spelled_differently_as_identical(string secondUnit)
+    {
+        var result = Parse(Header + $"PB-10,10mm plasterboard sheet,m2,18.50,10\nPB-10,10mm plasterboard sheet,{secondUnit},18.50,10\n");
+
+        Assert.That(result.PriceBook.TryFind("PB-10", out var item), Is.True);
+        Assert.That(item.Line, Is.EqualTo(2));
+        Assert.That(result.Problems, Is.EqualTo(new[]
+        {
+            new Problem("pricebook.csv", 3, Severity.Warning, "PB-10: repeats line 2; line 2 is used"),
+        }));
     }
 }

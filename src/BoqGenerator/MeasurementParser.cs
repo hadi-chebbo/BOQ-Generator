@@ -80,7 +80,7 @@ public static class MeasurementParser
             warnings.Add(RowProblem(Severity.Warning, $"quantity {quantityText} is a deduction"));
         }
 
-        var measurement = new Measurement(plan, trade, code, quantity, unit, row.LineNumber);
+        var measurement = new Measurement(plan, trade, code, quantity, Unit.Read(unit), row.LineNumber);
         return new CheckedRow(measurement, warnings);
     }
 

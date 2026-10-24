@@ -2,7 +2,7 @@
 
 Turns the rows of `measurements.csv` into **measurements**: one quantity of one
 **item code** in one **trade**, measured from one **plan**. Each row is checked on
-its own. Units are stored exactly as written and handled in slice 5. Matching codes
+its own. Units are recognised as a `Unit` (see Unit below). Matching codes
 to the price book and combining rows happen in slice 6.
 
 The same code appearing on many rows is normal (one item measured on several plans),
@@ -43,7 +43,9 @@ A field of only spaces counts as empty.
 - The deduction message shows the quantity exactly as typed.
 
 ### Unit
-- Stored as written (trimmed): `m2`, `M2`, `m²`, `mm`, `each` all stay as they are.
+- Recognised as a `Unit`: `M2`, `m²` and `sqm` are **m2**, `each` and `nr` are **EA**,
+  `lm` is **m**. Any other unit, such as `kg`, is kept as written and only matches itself,
+  ignoring case (`KG` = `kg`).
 - Empty → **Error**, row left out: `CN-90: unit is empty`. There is no fallback to
   the price book's unit, because the unit decides what the number means
   (`41750` mm is 41.75 m).
@@ -77,9 +79,11 @@ A field of only spaces counts as empty.
 | 17 | `CS-DWN,0,EA` | **Warning**: `CS-DWN: quantity is 0` |
 | 22 | `TL-FLR,abc,m2` | **Error**: `TL-FLR: quantity "abc" is not a number` |
 
-Kept as written for later slices: `plasterboard ` / `pb-13wr` / `M2` (line 7),
-`41750 mm` (line 8), `AR-66` (line 11), `each` (line 13), `TL-WALL` in `m` (line 21),
-`m²` (line 23), `PT-TRIM` (line 29).
+Units read as: `M2` → m2 (line 7), `each` → EA (line 13), `m²` → m2 (line 23).
+
+Kept for slice 6: `plasterboard ` / `pb-13wr` (line 7), `41750 mm` against a price per m
+(line 8), `AR-66` (line 11), `TL-WALL` in `m` against a price per m2 (line 21),
+`PT-TRIM` (line 29).
 
 ### Tickets
 | Commit | Ticket | What to look at |

@@ -76,9 +76,10 @@ public static class PriceBookParser
         return new CodeDecision(null, conflicts.ToList());
     }
 
-    // Copies are the same if they would price the same way. The description doesn't affect any number.
+    // Copies are the same if they would price the same way. The description doesn't affect any number,
+    // and units compare however they're spelled (M2 and m2 are the same unit).
     private static bool HaveSamePrice(PriceItem a, PriceItem b) =>
-        string.Equals(a.Unit, b.Unit, StringComparison.OrdinalIgnoreCase)
+        a.Unit == b.Unit
         && a.Rate == b.Rate
         && a.WastePercent == b.WastePercent;
 
@@ -129,7 +130,7 @@ public static class PriceBookParser
             warnings.Add(RowProblem(Severity.Warning, "description is empty"));
         }
 
-        var item = new PriceItem(code, description, unit, rate, wastePercent, row.LineNumber);
+        var item = new PriceItem(code, description, Unit.Read(unit), rate, wastePercent, row.LineNumber);
         return new CheckedRow(code, row.LineNumber, item, warnings);
     }
 

@@ -14,7 +14,7 @@ public class MeasurementParserTests
 
         Assert.That(result.Measurements, Is.EqualTo(new[]
         {
-            new Measurement("Ground Floor", "Plasterboard", "PB-10", 142.6m, "m2", Line: 2),
+            new Measurement("Ground Floor", "Plasterboard", "PB-10", 142.6m, Unit.Read("m2"), Line: 2),
         }));
         Assert.That(result.Problems, Is.Empty);
     }
@@ -47,14 +47,14 @@ public class MeasurementParserTests
     }
 
     [Test]
-    public void Keeps_case_and_spelling_and_rows_in_file_order()
+    public void Keeps_the_case_and_spelling_of_trade_and_code_and_rows_in_file_order()
     {
         var result = Parse(Header + "Ground Floor,Plasterboard,PB-10,-6.4,m2\nFirst Floor,plasterboard ,pb-13wr,\"1,250.5\",M2\n");
 
         Assert.That(result.Measurements, Is.EqualTo(new[]
         {
-            new Measurement("Ground Floor", "Plasterboard", "PB-10", -6.4m, "m2", Line: 2),
-            new Measurement("First Floor", "plasterboard", "pb-13wr", 1250.5m, "M2", Line: 3),
+            new Measurement("Ground Floor", "Plasterboard", "PB-10", -6.4m, Unit.Read("m2"), Line: 2),
+            new Measurement("First Floor", "plasterboard", "pb-13wr", 1250.5m, Unit.Read("m2"), Line: 3),
         }));
     }
 
@@ -172,7 +172,7 @@ public class MeasurementParserTests
 
         Assert.That(result.Measurements, Is.EqualTo(new[]
         {
-            new Measurement("", "Plasterboard", "PB-10", 142.6m, "m2", Line: 2),
+            new Measurement("", "Plasterboard", "PB-10", 142.6m, Unit.Read("m2"), Line: 2),
         }));
         Assert.That(result.Problems, Is.EqualTo(new[]
         {
@@ -203,5 +203,16 @@ public class MeasurementParserTests
             new Problem("measurements.csv", 2, Severity.Warning, "CS-DWN: plan is empty"),
             new Problem("measurements.csv", 2, Severity.Warning, "CS-DWN: quantity is 0"),
         }));
+    }
+
+    [TestCase("M2", "m2")]
+    [TestCase("m\u00B2", "m2")]
+    [TestCase("each", "EA")]
+    [TestCase("kg", "kg")]
+    public void Recognises_the_unit_of_a_measurement(string unitText, string expectedName)
+    {
+        var result = Parse(Header + $"Ground Floor,Carpentry,DR-820,4,{unitText}\n");
+
+        Assert.That(result.Measurements.Single().Unit.Name, Is.EqualTo(expectedName));
     }
 }
