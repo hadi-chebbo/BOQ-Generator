@@ -10,7 +10,12 @@ public class BoqCsvTests
         "PB-10,10mm plasterboard sheet,m2,18.50,10\n" +
         "PB-13WR,13mm wet-area plasterboard,m2,24.80,10\n" +
         "CS-DWN,LED downlight,EA,38.00,5\n" +
-        "SEAL-1,Sealant,m2,18.505,0\n";
+        "SEAL-1,Sealant,m2,18.505,0\n" +
+        "DR-1,\"Door, 820mm\",EA,185.00,0\n" +
+        "BD-1,\"Board \"\"A\"\"\",m2,10.00,0\n" +
+        "EVIL-1,=HYPERLINK(\"http://x\"),EA,1.00,0\n" +
+        "AT-1,@SUM(A1),EA,1.00,0\n" +
+        "+X1,Odd code,-,2.00,0\n";
 
     // Prices the measurements with the real parsers, builder and pricer, then writes the CSV.
     private static string WriteCsv(string measurementRows)
@@ -103,5 +108,43 @@ public class BoqCsvTests
             "Tiling,TL-FLR,600x600 porcelain floor tile,27.55,m2,64.00,1763.20\r\n" +
             "Tiling,TL-WALL,300x600 ceramic wall tile,35.00,m2,58.50,2047.50\r\n" +
             ",,Tiling,,,,3810.70\r\n"));
+    }
+
+    [Test]
+    public void Quotes_text_that_contains_a_comma_so_the_columns_stay_in_place()
+    {
+        var csv = WriteCsv("Ground Floor,Carpentry,DR-1,2,EA\n");
+
+        Assert.That(csv, Does.Contain("Carpentry,DR-1,\"Door, 820mm\",2.00,EA,185.00,370.00\r\n"));
+    }
+
+    [Test]
+    public void Doubles_a_quote_inside_quoted_text()
+    {
+        var csv = WriteCsv("Ground Floor,Plasterboard,BD-1,1,m2\n");
+
+        Assert.That(csv, Does.Contain("Plasterboard,BD-1,\"Board \"\"A\"\"\",1.00,m2,10.00,10.00\r\n"));
+    }
+
+    [Test]
+    public void Stops_excel_running_text_that_starts_like_a_formula()
+    {
+        var csv = WriteCsv(
+            "Ground Floor,Carpentry,EVIL-1,1,EA\n" +
+            "Ground Floor,Carpentry,AT-1,1,EA\n" +
+            "Ground Floor,-Demolition,PB-10,10,m2\n");
+
+        Assert.That(csv, Does.Contain("Carpentry,AT-1,'@SUM(A1),1.00,EA,1.00,1.00\r\n"));
+        Assert.That(csv, Does.Contain("Carpentry,EVIL-1,\"'=HYPERLINK(\"\"http://x\"\")\",1.00,EA,1.00,1.00\r\n"));
+        Assert.That(csv, Does.Contain("'-Demolition,PB-10,10mm plasterboard sheet,11.00,m2,18.50,203.50\r\n"));
+        Assert.That(csv, Does.Contain(",,'-Demolition,,,,203.50\r\n"));
+    }
+
+    [Test]
+    public void Guards_the_code_and_unit_columns_too()
+    {
+        var csv = WriteCsv("Ground Floor,Joinery,+X1,3,-\n");
+
+        Assert.That(csv, Does.Contain("Joinery,'+X1,Odd code,3.00,'-,2.00,6.00\r\n"));
     }
 }
