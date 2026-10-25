@@ -11,6 +11,13 @@ public static class PriceBookParser
     public static PriceBookParseResult Parse(TextReader text, string fileName)
     {
         var csv = CsvReader.Read(text, fileName, RequiredColumns);
+
+        // A price book with no prices is almost certainly the wrong file. One clear message beats
+        // reporting every measurement as "not in the price book". Rows that are there but bad are reported instead.
+        if (csv.Rows.Count == 0 && csv.Problems.Count == 0)
+        {
+            throw new InputFileException($"{fileName} has no rows");
+        }
         var checkedRows = csv.Rows.Select(row => CheckRow(row, fileName)).ToList();
         var items = new List<PriceItem>();
         var leftOut = new List<LeftOutCode>();

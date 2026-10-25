@@ -213,4 +213,19 @@ public class AppTests
         Assert.That(error, Does.Contain("would overwrite an input file"));
         Assert.That(File.ReadAllBytes(measurements), Is.EqualTo(before));
     }
+
+    [Test]
+    public void Stops_with_a_message_when_the_price_book_has_only_a_header()
+    {
+        var measurements = CopySample("measurements.csv");
+        var priceBook = InFolder("pricebook.csv");
+        File.WriteAllText(priceBook, "Code,Description,Unit,Rate,WastePercent\n");
+
+        var (exitCode, output, error) = Run(measurements, priceBook, InFolder("boq.csv"));
+
+        Assert.That(exitCode, Is.EqualTo(1));
+        Assert.That(output, Is.Empty);
+        Assert.That(error, Is.EqualTo($"{priceBook} has no rows\n"));
+        Assert.That(File.Exists(InFolder("boq.csv")), Is.False);
+    }
 }

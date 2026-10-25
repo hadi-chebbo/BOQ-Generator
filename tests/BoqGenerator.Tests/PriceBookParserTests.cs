@@ -355,4 +355,21 @@ public class PriceBookParserTests
             new Problem("pricebook.csv", 3, Severity.Warning, "PB-10: repeats line 2; line 2 is used"),
         }));
     }
+
+    [TestCase("")]
+    [TestCase("\n,,,,\n   \n")]
+    public void Stops_when_the_price_book_has_no_rows_after_its_header(string afterHeader)
+    {
+        var error = Assert.Throws<InputFileException>(() => Parse(Header + afterHeader));
+
+        Assert.That(error.Message, Is.EqualTo("pricebook.csv has no rows"));
+    }
+
+    [Test]
+    public void Still_reports_each_row_when_every_row_is_bad()
+    {
+        var result = Parse(Header + "PB-10,\"10mm plasterboard,m2,18.50,10\n");
+
+        Assert.That(result.Problems, Has.Count.EqualTo(1));
+    }
 }
