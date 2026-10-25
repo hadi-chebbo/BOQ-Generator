@@ -94,7 +94,7 @@ public static class BoqBuilder
             // Kept so the BOQ still shows the item was measured, but someone should check it.
             if (boqLine.Quantity == 0)
             {
-                problems.Add(LineProblem(Severity.Warning, "total is 0"));
+                problems.Add(LineProblem(Severity.Warning, $"total is 0 ({LineNumbers.Describe(boqLine.MeasurementLines)})"));
             }
 
             kept.Add(boqLine);

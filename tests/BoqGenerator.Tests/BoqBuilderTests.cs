@@ -239,16 +239,16 @@ public class BoqBuilderTests
         }));
     }
 
-    [TestCase("Ground Floor,Carpentry,SK-68,0,m\n")]
-    [TestCase("Ground Floor,Carpentry,SK-68,5,m\nFirst Floor,Carpentry,SK-68,-5,m\n")]
-    public void Keeps_but_warns_about_a_line_whose_total_is_zero(string rows)
+    [TestCase("Ground Floor,Carpentry,SK-68,0,m\n", "SK-68 in Carpentry: total is 0 (line 2)")]
+    [TestCase("Ground Floor,Carpentry,SK-68,5,m\nFirst Floor,Carpentry,SK-68,-5,m\n", "SK-68 in Carpentry: total is 0 (lines 2, 3)")]
+    public void Keeps_but_warns_about_a_line_whose_total_is_zero_naming_its_rows(string rows, string expectedMessage)
     {
         var result = Build(rows);
 
         Assert.That(result.Lines.Single().Quantity, Is.EqualTo(0m));
         Assert.That(result.Problems, Is.EqualTo(new[]
         {
-            new Problem("measurements.csv", 2, Severity.Warning, "SK-68 in Carpentry: total is 0"),
+            new Problem("measurements.csv", 2, Severity.Warning, expectedMessage),
         }));
     }
 
@@ -273,6 +273,6 @@ public class BoqBuilderTests
 
         Assert.That(result.Lines.Single().Quantity, Is.EqualTo(0m));
         Assert.That(result.Problems.Single(problem => problem.Message.Contains("total")),
-            Is.EqualTo(new Problem("measurements.csv", 2, Severity.Warning, "SK-68 in Carpentry: total is 0")));
+            Is.EqualTo(new Problem("measurements.csv", 2, Severity.Warning, "SK-68 in Carpentry: total is 0 (lines 2, 3)")));
     }
 }

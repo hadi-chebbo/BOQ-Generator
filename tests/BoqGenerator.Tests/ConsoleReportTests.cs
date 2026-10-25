@@ -56,7 +56,7 @@ public class ConsoleReportTests
             "  measurements.csv:3  Error    AR-66: no usable price (see pricebook.csv line 4)\n" +
             "  measurements.csv:4  Error    XX-1: not in the price book\n" +
             "  measurements.csv:5  Warning  CS-DWN: quantity is 0\n" +
-            "  measurements.csv:5  Warning  CS-DWN in Electrical: total is 0\n" +
+            "  measurements.csv:5  Warning  CS-DWN in Electrical: total is 0 (line 5)\n" +
             "\n"));
     }
 

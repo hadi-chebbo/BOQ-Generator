@@ -186,9 +186,10 @@ public class PriceBookParserTests
     [TestCase("-5%")]
     [TestCase("100.5")]
     [TestCase("150%")]
+    [TestCase("1,000")]
     public void Leaves_out_and_reports_a_waste_percent_outside_0_to_100(string wasteText)
     {
-        var result = Parse(Header + $"PB-13WR,13mm wet-area plasterboard,m2,24.80,{wasteText}\n");
+        var result = Parse(Header + $"PB-13WR,13mm wet-area plasterboard,m2,24.80,\"{wasteText}\"\n");
 
         Assert.That(result.PriceBook.TryFind("PB-13WR", out _), Is.False);
         Assert.That(result.Problems, Is.EqualTo(new[]
@@ -201,6 +202,9 @@ public class PriceBookParserTests
     [TestCase("10%%")]
     [TestCase("ten")]
     [TestCase("lots")]
+    [TestCase(".5")]
+    [TestCase("+5")]
+    [TestCase("5.")]
     public void Leaves_out_and_reports_a_waste_percent_that_is_not_a_number(string wasteText)
     {
         var result = Parse(Header + $"PB-13WR,13mm wet-area plasterboard,m2,24.80,{wasteText}\n");
@@ -371,5 +375,32 @@ public class PriceBookParserTests
         var result = Parse(Header + "PB-10,\"10mm plasterboard,m2,18.50,10\n");
 
         Assert.That(result.Problems, Has.Count.EqualTo(1));
+    }
+
+    [TestCase("0.1", 0.1, "10")]
+    [TestCase("0.5", 0.5, "50")]
+    [TestCase("0.05", 0.05, "5")]
+    public void Keeps_but_warns_about_a_waste_percent_that_looks_like_a_fraction(string wasteText, decimal expected, string meant)
+    {
+        var result = Parse(Header + $"PB-10,10mm plasterboard sheet,m2,18.50,{wasteText}\n");
+
+        Assert.That(result.PriceBook.TryFind("PB-10", out var item), Is.True);
+        Assert.That(item.WastePercent, Is.EqualTo(expected));
+        Assert.That(result.Problems, Is.EqualTo(new[]
+        {
+            new Problem("pricebook.csv", 2, Severity.Warning, $"PB-10: waste % \"{wasteText}\" is very small; did you mean {meant}%?"),
+        }));
+    }
+
+    [TestCase("0")]
+    [TestCase("1")]
+    [TestCase("")]
+    [TestCase("0.5%")]
+    [TestCase("0.1 %")]
+    public void Does_not_warn_about_no_waste_a_whole_percent_or_a_percent_written_with_its_sign(string wasteText)
+    {
+        var result = Parse(Header + $"PB-10,10mm plasterboard sheet,m2,18.50,{wasteText}\n");
+
+        Assert.That(result.Problems, Is.Empty);
     }
 }

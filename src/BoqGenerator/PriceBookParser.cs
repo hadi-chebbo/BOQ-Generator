@@ -1,5 +1,3 @@
-using System.Globalization;
-
 namespace BoqGenerator;
 
 public sealed record PriceBookParseResult(PriceBook PriceBook, IReadOnlyList<Problem> Problems);
@@ -119,7 +117,8 @@ public static class PriceBookParser
             return Unusable(RowProblem(Severity.Error, rateError));
         }
 
-        if (ReadWastePercent(row["WastePercent"], out var wastePercent) is { } wasteError)
+        var wasteText = row["WastePercent"];
+        if (ReadWastePercent(wasteText, out var wastePercent) is { } wasteError)
         {
             return Unusable(RowProblem(Severity.Error, wasteError));
         }
@@ -130,6 +129,14 @@ public static class PriceBookParser
         if (description.Length == 0)
         {
             warnings.Add(RowProblem(Severity.Warning, "description is empty"));
+        }
+
+        // A spreadsheet that stores 10% as the fraction 0.1 would give almost no waste, without anyone knowing.
+        // With a % sign ("0.5%") the small percent was clearly meant, so there's nothing to check.
+        if (wastePercent is > 0 and < 1 && !wasteText.Contains('%'))
+        {
+            warnings.Add(RowProblem(Severity.Warning,
+                $"waste % \"{wasteText}\" is very small; did you mean {NumberText.Plain(wastePercent * 100)}%?"));
         }
 
         var item = new PriceItem(code, description, Unit.Read(unit), rate, wastePercent, row.LineNumber);
@@ -175,7 +182,7 @@ public static class PriceBookParser
 
         // "10%" means the same as "10".
         var withoutPercentSign = text.EndsWith('%') ? text[..^1].TrimEnd() : text;
-        if (!TryParseNumber(withoutPercentSign, out wastePercent))
+        if (!NumberReader.TryRead(withoutPercentSign, out wastePercent))
         {
             return $"waste % \"{text}\" is not a number";
         }
@@ -187,10 +194,4 @@ public static class PriceBookParser
 
         return null;
     }
-
-    // A plain decimal like 18.50 or -3, with no symbols or separators. Only waste % still uses this
-    // looser check (it accepts ".5" and "+5"); whether waste % moves to NumberReader is still to decide.
-    private static bool TryParseNumber(string text, out decimal number) =>
-        decimal.TryParse(text, NumberStyles.AllowDecimalPoint | NumberStyles.AllowLeadingSign,
-            CultureInfo.InvariantCulture, out number);
 }
