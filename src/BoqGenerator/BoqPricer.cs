@@ -6,6 +6,12 @@ public sealed record PricedLine(BoqLine BoqLine, decimal QuantityWithWaste, deci
     public string Trade => BoqLine.Trade;
 
     public string Code => BoqLine.Code;
+
+    public string Description => BoqLine.Description;
+
+    public Unit Unit => BoqLine.Unit;
+
+    public decimal Rate => BoqLine.PriceItem.Rate;
 }
 
 // One trade's priced lines, in BOQ order, and their subtotal.

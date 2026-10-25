@@ -12,4 +12,6 @@ internal static class SampleFiles
         var prices = PriceBookParser.Parse(priceBookFile, "pricebook.csv");
         return BoqBuilder.Build(measurements.Measurements, prices.PriceBook, "measurements.csv", "pricebook.csv");
     }
+
+    public static PricedBoq PriceBoq() => BoqPricer.Price(BuildBoq().Lines, "measurements.csv");
 }

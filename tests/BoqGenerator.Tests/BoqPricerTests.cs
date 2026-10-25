@@ -58,7 +58,7 @@ public class BoqPricerTests
     [Test]
     public void Works_out_the_quantities_with_waste_for_the_sample_files()
     {
-        var result = BoqPricer.Price(SampleFiles.BuildBoq().Lines, "measurements.csv");
+        var result = SampleFiles.PriceBoq();
 
         Assert.That(result.Lines.Select(line => (line.Code, line.QuantityWithWaste)), Is.EqualTo(new[]
         {
@@ -128,7 +128,7 @@ public class BoqPricerTests
     [Test]
     public void Works_out_the_line_totals_for_the_sample_files()
     {
-        var result = BoqPricer.Price(SampleFiles.BuildBoq().Lines, "measurements.csv");
+        var result = SampleFiles.PriceBoq();
 
         Assert.That(result.Lines.Select(line => (line.Code, line.LineTotal)), Is.EqualTo(new[]
         {
@@ -178,7 +178,7 @@ public class BoqPricerTests
     [Test]
     public void Works_out_the_subtotals_and_totals_for_the_sample_files()
     {
-        var result = BoqPricer.Price(SampleFiles.BuildBoq().Lines, "measurements.csv");
+        var result = SampleFiles.PriceBoq();
 
         Assert.That(result.Trades.Select(trade => (trade.Trade, trade.Subtotal)), Is.EqualTo(new[]
         {
