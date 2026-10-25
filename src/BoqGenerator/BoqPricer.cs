@@ -1,7 +1,7 @@
 namespace BoqGenerator;
 
-// A BOQ line with its quantity with waste, which is the amount that gets priced.
-public sealed record PricedLine(BoqLine BoqLine, decimal QuantityWithWaste)
+// A BOQ line with its money worked out: the quantity with waste, which is what gets priced, and the line total.
+public sealed record PricedLine(BoqLine BoqLine, decimal QuantityWithWaste, decimal LineTotal)
 {
     public string Trade => BoqLine.Trade;
 
@@ -10,7 +10,7 @@ public sealed record PricedLine(BoqLine BoqLine, decimal QuantityWithWaste)
 
 public sealed record PricedBoq(IReadOnlyList<PricedLine> Lines, IReadOnlyList<Problem> Problems);
 
-// Works out the money for the BOQ, starting with each line's quantity with waste.
+// Works out the money for the BOQ: each line's quantity with waste and line total.
 public static class BoqPricer
 {
     public static PricedBoq Price(IReadOnlyList<BoqLine> lines, string measurementsFile)
@@ -31,7 +31,10 @@ public static class BoqPricer
                     $"{NumberText.Plain(unrounded)} {line.Unit.Name} rounds to 0.00"));
             }
 
-            pricedLines.Add(new PricedLine(line, quantityWithWaste));
+            // The rate is used exactly as written; only the result is rounded, to the nearest cent.
+            var lineTotal = RoundToHundredths(quantityWithWaste * line.PriceItem.Rate);
+
+            pricedLines.Add(new PricedLine(line, quantityWithWaste, lineTotal));
         }
 
         return new PricedBoq(pricedLines, problems);
@@ -45,8 +48,10 @@ public static class BoqPricer
             return Math.Ceiling(unrounded);
         }
 
-        // Halves round away from zero (283.305 is 283.31), as someone checking by hand expects.
-        // C#'s default would round them to even instead.
-        return Math.Round(unrounded, 2, MidpointRounding.AwayFromZero);
+        return RoundToHundredths(unrounded);
     }
+
+    // Every quantity and amount of money is rounded the same way: to 2 decimals, with halves away from zero
+    // (283.305 is 283.31), as someone checking by hand expects. C#'s default would round halves to even.
+    private static decimal RoundToHundredths(decimal value) => Math.Round(value, 2, MidpointRounding.AwayFromZero);
 }

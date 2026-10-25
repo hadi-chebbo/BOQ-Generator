@@ -11,7 +11,8 @@ public class BoqPricerTests
         "TL-FLR,600x600 porcelain floor tile,m2,64.00,12\n" +
         "CS-DWN,LED downlight,EA,38.00,5\n" +
         "DR-820,820mm hollow-core door,EA,185.00,0\n" +
-        "SK-68,68mm pine skirting,m,9.45,5\n";
+        "SK-68,68mm pine skirting,m,9.45,5\n" +
+        "SEAL-1,Sealant (rate with 3 decimals),m2,18.505,0\n";
 
     // Builds the BOQ lines with the real parsers and builder, so the inputs look like the real files.
     private static PricedBoq Price(string measurementRows)
@@ -93,5 +94,54 @@ public class BoqPricerTests
         var result = Price("Ground Floor,Electrical,CS-DWN,0,EA\n");
 
         Assert.That(result.Problems, Is.Empty);
+    }
+
+    [Test]
+    public void Works_out_the_line_total_from_the_quantity_with_waste()
+    {
+        // 283.31 m2 x 18.50 = 5241.235, which rounds to 5241.24.
+        var result = Price(
+            "Ground Floor,Plasterboard,PB-10,142.6,m2\n" +
+            "Ground Floor,Plasterboard,PB-10,-6.4,m2\n" +
+            "First Floor,Plasterboard,PB-10,121.35,m2\n");
+
+        Assert.That(result.Lines.Single().LineTotal, Is.EqualTo(5241.24m));
+    }
+
+    [Test]
+    public void Uses_the_rate_as_written_and_rounds_a_half_cent_away_from_zero()
+    {
+        // 5 m2 x 18.505 = 92.525: away from zero is 92.53 (rounding to even would give 92.52).
+        var result = Price("Ground Floor,Joinery,SEAL-1,5,m2\n");
+
+        Assert.That(result.Lines.Single().LineTotal, Is.EqualTo(92.53m));
+    }
+
+    [TestCase("Ground Floor,Electrical,CS-DWN,25,EA\n", 1026.00)]
+    [TestCase("Ground Floor,Electrical,CS-DWN,0,EA\n", 0)]
+    public void Works_out_the_line_total_for_a_count(string row, decimal expected)
+    {
+        Assert.That(Price(row).Lines.Single().LineTotal, Is.EqualTo(expected));
+    }
+
+    [Test]
+    public void Works_out_the_line_totals_for_the_sample_files()
+    {
+        var result = BoqPricer.Price(SampleFiles.BuildBoq().Lines, "measurements.csv");
+
+        Assert.That(result.Lines.Select(line => (line.Code, line.LineTotal)), Is.EqualTo(new[]
+        {
+            ("DH-LEV", 378.00m),
+            ("DR-820", 1665.00m),
+            ("SK-68", 982.33m),
+            ("CS-DWN", 1026.00m),
+            ("SB-STONE", 4912.50m),
+            ("PT-CEIL", 1396.59m),
+            ("PT-WALL", 4000.08m),
+            ("PB-10", 5241.24m),
+            ("PB-13WR", 1118.48m),
+            ("TL-FLR", 1763.20m),
+            ("TL-WALL", 2047.50m),
+        }));
     }
 }
