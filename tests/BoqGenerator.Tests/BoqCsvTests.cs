@@ -17,16 +17,15 @@ public class BoqCsvTests
         "AT-1,@SUM(A1),EA,1.00,0\n" +
         "+X1,Odd code,-,2.00,0\n";
 
-    // Prices the measurements with the real parsers, builder and pricer, then writes the CSV.
+    // Prices the measurements with the real pipeline, then writes the CSV.
     private static string WriteCsv(string measurementRows)
     {
-        var measurements = MeasurementParser.Parse(new StringReader(MeasurementsHeader + measurementRows), "measurements.csv");
-        var prices = PriceBookParser.Parse(new StringReader(PriceBook), "pricebook.csv");
-        var boq = BoqBuilder.Build(measurements.Measurements, prices.PriceBook, "measurements.csv", "pricebook.csv");
-        var priced = BoqPricer.Price(boq.Lines, "measurements.csv");
+        var generated = BoqGeneration.Generate(
+            new StringReader(MeasurementsHeader + measurementRows), "measurements.csv",
+            new StringReader(PriceBook), "pricebook.csv");
 
         var writer = new StringWriter();
-        BoqCsv.Write(priced, writer);
+        BoqCsv.Write(generated.Boq, writer);
         return writer.ToString();
     }
 

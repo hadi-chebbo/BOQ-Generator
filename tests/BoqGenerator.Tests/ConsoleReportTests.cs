@@ -12,14 +12,12 @@ public class ConsoleReportTests
     // Prices the measurements with the real pipeline, then writes the report with every problem found.
     private static string Report(string measurementRows, string priceBook = PriceBook)
     {
-        var measurements = MeasurementParser.Parse(new StringReader(MeasurementsHeader + measurementRows), "measurements.csv");
-        var prices = PriceBookParser.Parse(new StringReader(priceBook), "pricebook.csv");
-        var boq = BoqBuilder.Build(measurements.Measurements, prices.PriceBook, "measurements.csv", "pricebook.csv");
-        var priced = BoqPricer.Price(boq.Lines, "measurements.csv");
-        var problems = prices.Problems.Concat(measurements.Problems).Concat(boq.Problems).Concat(priced.Problems).ToList();
+        var generated = BoqGeneration.Generate(
+            new StringReader(MeasurementsHeader + measurementRows), "measurements.csv",
+            new StringReader(priceBook), "pricebook.csv");
 
         var writer = new StringWriter { NewLine = "\n" };
-        ConsoleReport.Write(problems, "pricebook.csv", priced, "boq.csv", writer);
+        ConsoleReport.Write(generated.Problems, "pricebook.csv", generated.Boq, "boq.csv", writer);
         return writer.ToString();
     }
 
@@ -81,17 +79,10 @@ public class ConsoleReportTests
     [Test]
     public void Writes_the_report_for_the_sample_files()
     {
-        var data = Path.Combine(TestContext.CurrentContext.TestDirectory, "data");
-        using var measurementsFile = File.OpenText(Path.Combine(data, "measurements.csv"));
-        using var priceBookFile = File.OpenText(Path.Combine(data, "pricebook.csv"));
-        var measurements = MeasurementParser.Parse(measurementsFile, "measurements.csv");
-        var prices = PriceBookParser.Parse(priceBookFile, "pricebook.csv");
-        var boq = BoqBuilder.Build(measurements.Measurements, prices.PriceBook, "measurements.csv", "pricebook.csv");
-        var priced = BoqPricer.Price(boq.Lines, "measurements.csv");
-        var problems = prices.Problems.Concat(measurements.Problems).Concat(boq.Problems).Concat(priced.Problems).ToList();
+        var generated = SampleFiles.Generate();
 
         var writer = new StringWriter { NewLine = "\n" };
-        ConsoleReport.Write(problems, "pricebook.csv", priced, "boq.csv", writer);
+        ConsoleReport.Write(generated.Problems, "pricebook.csv", generated.Boq, "boq.csv", writer);
 
         Assert.That(writer.ToString(), Is.EqualTo(
             "Problems: 10 errors, 2 warnings\n" +
