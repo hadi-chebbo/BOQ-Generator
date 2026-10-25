@@ -11,4 +11,8 @@ public sealed record BoqLine(string Trade, PriceItem PriceItem, decimal Quantity
     public string Description => PriceItem.Description;
 
     public Unit Unit => PriceItem.Unit;
+
+    // A problem about the whole line. It has no single row in the file, so it goes on its first measurement's line.
+    public Problem Problem(string measurementsFile, Severity severity, string message) =>
+        new(measurementsFile, MeasurementLines[0], severity, $"{Code} in {Trade}: {message}");
 }

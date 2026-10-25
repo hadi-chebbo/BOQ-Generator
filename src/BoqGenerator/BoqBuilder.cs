@@ -1,5 +1,3 @@
-using System.Globalization;
-
 namespace BoqGenerator;
 
 public sealed record BoqBuildResult(IReadOnlyList<BoqLine> Lines, IReadOnlyList<Problem> Problems);
@@ -82,16 +80,13 @@ public static class BoqBuilder
         var kept = new List<BoqLine>();
         foreach (var boqLine in combined)
         {
-            // A combined line has no single row in the file, so its problems go on its first measurement's line.
-            var firstMeasurementLine = boqLine.MeasurementLines[0];
-            Problem LineProblem(Severity severity, string message) =>
-                new(measurementsFile, firstMeasurementLine, severity, $"{boqLine.Code} in {boqLine.Trade}: {message}");
+            Problem LineProblem(Severity severity, string message) => boqLine.Problem(measurementsFile, severity, message);
 
             // More deducted than measured: a negative amount of material makes no sense.
             if (boqLine.Quantity < 0)
             {
                 problems.Add(LineProblem(Severity.Error,
-                    $"total {Plain(boqLine.Quantity)} {boqLine.Unit.Name} is below zero " +
+                    $"total {NumberText.Plain(boqLine.Quantity)} {boqLine.Unit.Name} is below zero " +
                     $"({LineNumbers.Describe(boqLine.MeasurementLines)}); line left out"));
                 continue;
             }
@@ -107,10 +102,6 @@ public static class BoqBuilder
 
         return kept;
     }
-
-    // A total written without trailing zeros, so -500.0 mm reads as -500 mm.
-    private static string Plain(decimal number) =>
-        number.ToString("0.############################", CultureInfo.InvariantCulture);
 
     // A measurement paired with its price item. PricedQuantity is the measured quantity converted to the
     // price item's unit; it's the one to add up, not Measurement.Quantity.

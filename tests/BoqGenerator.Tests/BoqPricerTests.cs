@@ -10,7 +10,8 @@ public class BoqPricerTests
         "PT-CEIL,Ceiling paint (2 coats),m2,7.80,\n" +
         "TL-FLR,600x600 porcelain floor tile,m2,64.00,12\n" +
         "CS-DWN,LED downlight,EA,38.00,5\n" +
-        "DR-820,820mm hollow-core door,EA,185.00,0\n";
+        "DR-820,820mm hollow-core door,EA,185.00,0\n" +
+        "SK-68,68mm pine skirting,m,9.45,5\n";
 
     // Builds the BOQ lines with the real parsers and builder, so the inputs look like the real files.
     private static PricedBoq Price(string measurementRows)
@@ -18,7 +19,7 @@ public class BoqPricerTests
         var measurements = MeasurementParser.Parse(new StringReader(MeasurementsHeader + measurementRows), "measurements.csv");
         var prices = PriceBookParser.Parse(new StringReader(PriceBook), "pricebook.csv");
         var boq = BoqBuilder.Build(measurements.Measurements, prices.PriceBook, "measurements.csv", "pricebook.csv");
-        return BoqPricer.Price(boq.Lines);
+        return BoqPricer.Price(boq.Lines, "measurements.csv");
     }
 
     [Test]
@@ -55,7 +56,7 @@ public class BoqPricerTests
     [Test]
     public void Works_out_the_quantities_with_waste_for_the_sample_files()
     {
-        var result = BoqPricer.Price(SampleFiles.BuildBoq().Lines);
+        var result = BoqPricer.Price(SampleFiles.BuildBoq().Lines, "measurements.csv");
 
         Assert.That(result.Lines.Select(line => (line.Code, line.QuantityWithWaste)), Is.EqualTo(new[]
         {
@@ -71,5 +72,26 @@ public class BoqPricerTests
             ("TL-FLR", 27.55m),
             ("TL-WALL", 35.00m),
         }));
+    }
+
+    [Test]
+    public void Warns_when_a_quantity_with_waste_rounds_to_zero()
+    {
+        // 3 mm is 0.003 m; with 5% waste that's 0.00315 m, which rounds to 0.00.
+        var result = Price("Ground Floor,Carpentry,SK-68,3,mm\n");
+
+        Assert.That(result.Lines.Single().QuantityWithWaste, Is.EqualTo(0m));
+        Assert.That(result.Problems, Is.EqualTo(new[]
+        {
+            new Problem("measurements.csv", 2, Severity.Warning, "SK-68 in Carpentry: 0.00315 m rounds to 0.00"),
+        }));
+    }
+
+    [Test]
+    public void Adds_no_warning_for_a_line_that_was_already_zero()
+    {
+        var result = Price("Ground Floor,Electrical,CS-DWN,0,EA\n");
+
+        Assert.That(result.Problems, Is.Empty);
     }
 }
