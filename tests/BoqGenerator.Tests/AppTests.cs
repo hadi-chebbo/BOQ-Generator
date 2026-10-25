@@ -1,3 +1,4 @@
+using System.Runtime.Versioning;
 using System.Text;
 
 namespace BoqGenerator.Tests;
@@ -161,6 +162,7 @@ public class AppTests
     }
 
     [Test]
+    [UnsupportedOSPlatform("windows")]
     public void Stops_with_a_message_when_an_input_file_cannot_be_read()
     {
         if (OperatingSystem.IsWindows())
