@@ -60,6 +60,22 @@ _Avoid_: Estimate, quote
 One item code in one trade, combining every measurement of it across all plans, priced from its price item.
 _Avoid_: BOQ row, line item
 
+**Quantity with waste**:
+A BOQ line's quantity plus its waste %: the amount that is priced.
+_Avoid_: Gross quantity, adjusted quantity
+
+**Line total**:
+A BOQ line's quantity with waste times its rate, excluding GST.
+_Avoid_: Line price, amount
+
+**Trade subtotal**:
+The sum of the line totals in one trade, excluding GST.
+_Avoid_: Trade total, section total
+
+**GST**:
+Goods and Services Tax: 10% of the BOQ's total excluding GST, added to give the total including GST.
+_Avoid_: Tax, VAT
+
 ## Problems
 
 **Problem**:

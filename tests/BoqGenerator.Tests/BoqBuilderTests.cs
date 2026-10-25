@@ -11,14 +11,11 @@ public class BoqBuilderTests
         "PB-13WR,13mm wet-area plasterboard,m2,24.80,10\n" +
         "SK-68,68mm pine skirting,m,9.45,5\n";
 
-    private static BoqBuildResult Build(string measurementRows, string priceBook = PriceBook) =>
-        Build(new StringReader(MeasurementsHeader + measurementRows), new StringReader(priceBook));
-
     // Reads both files with the real parsers, so the inputs look like the real files.
-    private static BoqBuildResult Build(TextReader measurementsText, TextReader priceBookText)
+    private static BoqBuildResult Build(string measurementRows, string priceBook = PriceBook)
     {
-        var measurements = MeasurementParser.Parse(measurementsText, "measurements.csv");
-        var prices = PriceBookParser.Parse(priceBookText, "pricebook.csv");
+        var measurements = MeasurementParser.Parse(new StringReader(MeasurementsHeader + measurementRows), "measurements.csv");
+        var prices = PriceBookParser.Parse(new StringReader(priceBook), "pricebook.csv");
         return BoqBuilder.Build(measurements.Measurements, prices.PriceBook, "measurements.csv", "pricebook.csv");
     }
 
@@ -124,11 +121,7 @@ public class BoqBuilderTests
     [Test]
     public void Builds_the_boq_lines_for_the_sample_files()
     {
-        var data = Path.Combine(TestContext.CurrentContext.TestDirectory, "data");
-        using var measurementsFile = File.OpenText(Path.Combine(data, "measurements.csv"));
-        using var priceBookFile = File.OpenText(Path.Combine(data, "pricebook.csv"));
-
-        var result = Build(measurementsFile, priceBookFile);
+        var result = SampleFiles.BuildBoq();
 
         Assert.That(result.Lines.Select(line => FormattableString.Invariant($"{line.Trade} {line.Code} {line.Quantity} {line.Unit.Name}")), Is.EqualTo(new[]
         {
