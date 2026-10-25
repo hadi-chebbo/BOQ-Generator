@@ -54,7 +54,13 @@ public class AppTests
         Assert.That(output, Does.StartWith("Problems: 10 errors, 2 warnings\n"));
         Assert.That(output, Does.Contain($"  {priceBook}:4 "));
         Assert.That(output, Does.Contain("Total including GST  26984.01\n"));
-        Assert.That(output, Does.EndWith($"BOQ written to {boqFile} (11 lines).\n"));
+        Assert.That(output, Does.EndWith(
+            $"BOQ written to {boqFile} (11 lines).\n" +
+            $"Markdown report written to {InFolder("boq.md")}.\n"));
+
+        var markdown = new StringWriter();
+        MarkdownReport.Write(SampleFiles.PriceBoq(), markdown);
+        Assert.That(File.ReadAllText(InFolder("boq.md")), Is.EqualTo(markdown.ToString()));
     }
 
     [Test]
@@ -70,7 +76,8 @@ public class AppTests
 
             Assert.That(exitCode, Is.EqualTo(0));
             Assert.That(File.Exists(InFolder("boq.csv")), Is.True);
-            Assert.That(output, Does.EndWith("BOQ written to boq.csv (11 lines).\n"));
+            Assert.That(File.Exists(InFolder("boq.md")), Is.True);
+            Assert.That(output, Does.EndWith("BOQ written to boq.csv (11 lines).\nMarkdown report written to boq.md.\n"));
         }
         finally
         {
@@ -289,5 +296,52 @@ public class AppTests
         {
             Environment.CurrentDirectory = previousFolder;
         }
+    }
+
+    [TestCase("my-boq.csv", "my-boq.md")]
+    [TestCase("report", "report.md")]
+    [TestCase("out.md", "out.md.md")]
+    public void Writes_the_markdown_report_next_to_the_boq(string boqName, string markdownName)
+    {
+        var measurements = CopySample("measurements.csv");
+        var priceBook = CopySample("pricebook.csv");
+
+        var (exitCode, _, _) = Run(measurements, priceBook, InFolder(boqName));
+
+        Assert.That(exitCode, Is.EqualTo(0));
+        Assert.That(File.Exists(InFolder(boqName)), Is.True);
+        Assert.That(File.ReadAllText(InFolder(markdownName)), Does.StartWith("# Bill of Quantities\n"));
+    }
+
+    [Test]
+    public void Refuses_to_write_the_markdown_report_over_an_input_file()
+    {
+        var measurements = InFolder("out.md");
+        File.Copy(Path.Combine(TestContext.CurrentContext.TestDirectory, "data", "measurements.csv"), measurements);
+        var priceBook = CopySample("pricebook.csv");
+        var before = File.ReadAllBytes(measurements);
+
+        var (exitCode, _, error) = Run(measurements, priceBook, InFolder("out.csv"));
+
+        Assert.That(exitCode, Is.EqualTo(1));
+        Assert.That(error, Does.Contain("would overwrite an input file"));
+        Assert.That(File.ReadAllBytes(measurements), Is.EqualTo(before));
+    }
+
+    [Test]
+    public void Writes_neither_file_when_the_markdown_report_cannot_be_written()
+    {
+        var measurements = CopySample("measurements.csv");
+        var priceBook = CopySample("pricebook.csv");
+        var boqFile = InFolder("boq.csv");
+        File.WriteAllText(boqFile, "the previous BOQ");
+        Directory.CreateDirectory(InFolder("boq.md"));
+
+        var (exitCode, output, error) = Run(measurements, priceBook, boqFile);
+
+        Assert.That(exitCode, Is.EqualTo(1));
+        Assert.That(output, Is.Empty);
+        Assert.That(error, Is.EqualTo($"{InFolder("boq.md")} is a folder, not a file\n"));
+        Assert.That(File.ReadAllText(boqFile), Is.EqualTo("the previous BOQ"));
     }
 }

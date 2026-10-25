@@ -1,11 +1,12 @@
 namespace BoqGenerator;
 
 // What the user sees after a run: the problems found, then the trade subtotals and totals,
-// then where the BOQ was written.
+// then where the BOQ and the Markdown report were written.
 public static class ConsoleReport
 {
     public static void Write(
-        IReadOnlyList<Problem> problems, string priceBookFile, PricedBoq boq, string outputPath, TextWriter writer)
+        IReadOnlyList<Problem> problems, string priceBookFile, PricedBoq boq, string boqFile, string markdownFile,
+        TextWriter writer)
     {
         WriteProblems(problems, priceBookFile, writer);
         writer.WriteLine();
@@ -13,7 +14,8 @@ public static class ConsoleReport
         WriteMoney(boq, writer);
         writer.WriteLine();
 
-        writer.WriteLine($"BOQ written to {outputPath} ({Words.Plural(boq.Lines.Count, "line")}).");
+        writer.WriteLine($"BOQ written to {boqFile} ({Words.Plural(boq.Lines.Count, "line")}).");
+        writer.WriteLine($"Markdown report written to {markdownFile}.");
     }
 
     // The price book's problems come first, because measurement problems point at them
@@ -51,12 +53,7 @@ public static class ConsoleReport
     private static void WriteMoney(PricedBoq boq, TextWriter writer)
     {
         var subtotals = boq.Trades.Select(trade => (Label: "  " + trade.Trade, Amount: trade.Subtotal)).ToList();
-        var totals = new List<(string Label, decimal Amount)>
-        {
-            ("Total excluding GST", boq.TotalExcludingGst),
-            ("GST (10%)", boq.Gst),
-            ("Total including GST", boq.TotalIncludingGst),
-        };
+        var totals = boq.Totals;
 
         var all = subtotals.Concat(totals).ToList();
         var labelWidth = all.Max(row => row.Label.Length);

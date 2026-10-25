@@ -34,6 +34,14 @@ public sealed record PricedBoq(IReadOnlyList<PricedTrade> Trades, IReadOnlyList<
     public decimal Gst => Rounding.ToHundredths(TotalExcludingGst * GstRate);
 
     public decimal TotalIncludingGst => TotalExcludingGst + Gst;
+
+    // The three totals as every report shows them, so their wording lives in one place.
+    public IReadOnlyList<(string Label, decimal Amount)> Totals => new[]
+    {
+        ("Total excluding GST", TotalExcludingGst),
+        ($"GST ({GstRate * 100:0}%)", Gst),
+        ("Total including GST", TotalIncludingGst),
+    };
 }
 
 // Works out the money for the BOQ: each line's quantity with waste and line total, grouped into trades.

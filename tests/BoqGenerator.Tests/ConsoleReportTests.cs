@@ -17,7 +17,7 @@ public class ConsoleReportTests
             new StringReader(priceBook), "pricebook.csv");
 
         var writer = new StringWriter { NewLine = "\n" };
-        ConsoleReport.Write(generated.Problems, "pricebook.csv", generated.Boq, "boq.csv", writer);
+        ConsoleReport.Write(generated.Problems, "pricebook.csv", generated.Boq, "boq.csv", "boq.md", writer);
         return writer.ToString();
     }
 
@@ -36,7 +36,8 @@ public class ConsoleReportTests
             "GST (10%)             20.35\n" +
             "Total including GST  223.85\n" +
             "\n" +
-            "BOQ written to boq.csv (1 line).\n"));
+            "BOQ written to boq.csv (1 line).\n" +
+            "Markdown report written to boq.md.\n"));
     }
 
     [Test]
@@ -73,7 +74,7 @@ public class ConsoleReportTests
         var report = Report("Ground Floor,Carpentry,XX-1,1,m\n");
 
         Assert.That(report, Does.Contain("Trade subtotals (excluding GST):\n  none\n"));
-        Assert.That(report, Does.EndWith("BOQ written to boq.csv (0 lines).\n"));
+        Assert.That(report, Does.EndWith("BOQ written to boq.csv (0 lines).\nMarkdown report written to boq.md.\n"));
     }
 
     [Test]
@@ -82,7 +83,7 @@ public class ConsoleReportTests
         var generated = SampleFiles.Generate();
 
         var writer = new StringWriter { NewLine = "\n" };
-        ConsoleReport.Write(generated.Problems, "pricebook.csv", generated.Boq, "boq.csv", writer);
+        ConsoleReport.Write(generated.Problems, "pricebook.csv", generated.Boq, "boq.csv", "boq.md", writer);
 
         Assert.That(writer.ToString(), Is.EqualTo(
             "Problems: 10 errors, 2 warnings\n" +
@@ -111,7 +112,8 @@ public class ConsoleReportTests
             "GST (10%)             2453.09\n" +
             "Total including GST  26984.01\n" +
             "\n" +
-            "BOQ written to boq.csv (11 lines).\n"));
+            "BOQ written to boq.csv (11 lines).\n" +
+            "Markdown report written to boq.md.\n"));
     }
 
     [Test]
@@ -126,7 +128,7 @@ public class ConsoleReportTests
         };
         var writer = new StringWriter { NewLine = "\n" };
 
-        ConsoleReport.Write(problems, "pricebook.csv", new PricedBoq(Array.Empty<PricedTrade>(), problems), "boq.csv", writer);
+        ConsoleReport.Write(problems, "pricebook.csv", new PricedBoq(Array.Empty<PricedTrade>(), problems), "boq.csv", "boq.md", writer);
 
         var messages = writer.ToString().Split('\n').Skip(1).Take(4).Select(line => line[^1..]);
         Assert.That(messages, Is.EqualTo(new[] { "A", "B", "D", "C" }));

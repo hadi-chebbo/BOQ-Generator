@@ -483,3 +483,4 @@ $RECYCLE.BIN/
 
 # The BOQ the program writes by default
 boq.csv
+boq.md

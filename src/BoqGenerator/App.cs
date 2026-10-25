@@ -5,6 +5,7 @@ namespace BoqGenerator;
 // The command line program: reads the two input files, writes the BOQ and prints the report.
 // Returns the exit code: 0 when the BOQ was written (even if some rows had problems), 1 otherwise.
 // With --strict, a run whose data had any Errors also exits with 1, after writing the BOQ as usual.
+// A Markdown report is written next to the BOQ: boq.csv gives boq.md.
 // Every expected failure is a one-line message on the error output, never a crash.
 public static class App
 {
@@ -27,9 +28,10 @@ public static class App
 
         var measurementsFile = files[0];
         var priceBookFile = files[1];
-        var outputFile = files.Length == 3 ? files[2] : "boq.csv";
+        var boqFile = files.Length == 3 ? files[2] : "boq.csv";
+        var markdownFile = MarkdownFileFor(boqFile);
 
-        if (CheckFiles(measurementsFile, priceBookFile, outputFile) is { } fileProblem)
+        if (CheckFiles(measurementsFile, priceBookFile, boqFile, markdownFile) is { } fileProblem)
         {
             error.WriteLine(fileProblem);
             return 1;
@@ -54,20 +56,13 @@ public static class App
             return 1;
         }
 
-        try
+        // The CSV is UTF-8 with a BOM, so Excel shows any non-English character correctly.
+        if (!WriteOutputs(generated.Boq, boqFile, markdownFile, error))
         {
-            // UTF-8 with a BOM, so Excel shows any non-English character correctly.
-            using var boqText = new StreamWriter(outputFile, append: false, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
-            BoqCsv.Write(generated.Boq, boqText);
-        }
-        catch (Exception cannotWrite) when (cannotWrite is IOException or UnauthorizedAccessException)
-        {
-            // A missing folder, no permission, or the file is open in Excel.
-            error.WriteLine($"Could not write {outputFile}: {Reason(cannotWrite)}");
             return 1;
         }
 
-        ConsoleReport.Write(generated.Problems, priceBookFile, generated.Boq, outputFile, output);
+        ConsoleReport.Write(generated.Problems, priceBookFile, generated.Boq, boqFile, markdownFile, output);
 
         var errors = generated.Problems.Count(problem => problem.IsError);
         if (strict && errors > 0)
@@ -79,8 +74,15 @@ public static class App
         return 0;
     }
 
+    // The BOQ's name with .md instead: boq.csv gives boq.md. If the BOQ is already called something.md,
+    // .md is added on the end, so the two files can never be the same.
+    private static string MarkdownFileFor(string boqFile) =>
+        Path.GetExtension(boqFile).Equals(".md", StringComparison.OrdinalIgnoreCase)
+            ? boqFile + ".md"
+            : Path.ChangeExtension(boqFile, ".md");
+
     // Returns why the files can't be used, or null if they can.
-    private static string? CheckFiles(string measurementsFile, string priceBookFile, string outputFile)
+    private static string? CheckFiles(string measurementsFile, string priceBookFile, string boqFile, string markdownFile)
     {
         foreach (var inputFile in new[] { measurementsFile, priceBookFile })
         {
@@ -100,9 +102,17 @@ public static class App
             return $"{measurementsFile} and {priceBookFile} are the same file; give the measurements and the price book separately";
         }
 
-        if (SameFile(outputFile, measurementsFile) || SameFile(outputFile, priceBookFile))
+        foreach (var written in new[] { boqFile, markdownFile })
         {
-            return $"The output file {outputFile} would overwrite an input file; choose another name";
+            if (Directory.Exists(written))
+            {
+                return $"{written} is a folder, not a file";
+            }
+
+            if (SameFile(written, measurementsFile) || SameFile(written, priceBookFile))
+            {
+                return $"The output file {written} would overwrite an input file; choose another name";
+            }
         }
 
         return null;
@@ -122,6 +132,50 @@ public static class App
         var file = new FileInfo(path);
         var target = file.Exists ? file.ResolveLinkTarget(returnFinalTarget: true) : null;
         return Path.GetFullPath(target?.FullName ?? path);
+    }
+
+    // Writes the BOQ and the Markdown report together: both are written to temporary files first and only put in
+    // place once both succeeded, so a failure never leaves a new BOQ next to an old report (or half a file).
+    private static bool WriteOutputs(PricedBoq boq, string boqFile, string markdownFile, TextWriter error)
+    {
+        var boqTemporary = boqFile + ".tmp";
+        var markdownTemporary = markdownFile + ".tmp";
+        var writing = boqFile;
+        try
+        {
+            // The CSV is UTF-8 with a BOM, so Excel shows any non-English character correctly.
+            WriteFile(boqTemporary, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true), text => BoqCsv.Write(boq, text));
+            writing = markdownFile;
+            WriteFile(markdownTemporary, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false), text => MarkdownReport.Write(boq, text));
+
+            writing = boqFile;
+            File.Move(boqTemporary, boqFile, overwrite: true);
+            writing = markdownFile;
+            File.Move(markdownTemporary, markdownFile, overwrite: true);
+            return true;
+        }
+        catch (Exception cannotWrite) when (cannotWrite is IOException or UnauthorizedAccessException)
+        {
+            // A missing folder, no permission, or a file open in Excel.
+            error.WriteLine($"Could not write {writing}: {Reason(cannotWrite)}");
+            DeleteIfThere(boqTemporary);
+            DeleteIfThere(markdownTemporary);
+            return false;
+        }
+    }
+
+    private static void DeleteIfThere(string file)
+    {
+        if (File.Exists(file))
+        {
+            File.Delete(file);
+        }
+    }
+
+    private static void WriteFile(string file, Encoding encoding, Action<TextWriter> write)
+    {
+        using var text = new StreamWriter(file, append: false, encoding);
+        write(text);
     }
 
     // Opens an input file, or reports why it can't be read (no permission, or locked by another program).
