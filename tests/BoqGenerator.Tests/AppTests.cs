@@ -87,7 +87,7 @@ public class AppTests
 
         Assert.That(exitCode, Is.EqualTo(1));
         Assert.That(output, Is.Empty);
-        Assert.That(error, Does.StartWith("Usage: dotnet run --project src/BoqGenerator -- <measurements.csv> <pricebook.csv> [output.csv]"));
+        Assert.That(error, Does.StartWith("Usage: dotnet run --project src/BoqGenerator -- [--strict] <measurements.csv> <pricebook.csv> [output.csv]"));
     }
 
     [Test]
@@ -229,5 +229,65 @@ public class AppTests
         Assert.That(output, Is.Empty);
         Assert.That(error, Is.EqualTo($"{priceBook} has no rows\n"));
         Assert.That(File.Exists(InFolder("boq.csv")), Is.False);
+    }
+
+    [TestCase("--strict", "M", "P", "B")]
+    [TestCase("M", "P", "B", "--strict")]
+    [TestCase("M", "--strict", "P", "B")]
+    public void With_strict_still_writes_the_boq_but_exits_with_1_when_there_were_errors(params string[] pattern)
+    {
+        var files = new Dictionary<string, string>
+        {
+            ["M"] = CopySample("measurements.csv"),
+            ["P"] = CopySample("pricebook.csv"),
+            ["B"] = InFolder("boq.csv"),
+        };
+        var args = pattern.Select(arg => files.TryGetValue(arg, out var path) ? path : arg).ToArray();
+
+        var (exitCode, output, error) = Run(args);
+
+        Assert.That(exitCode, Is.EqualTo(1));
+        Assert.That(File.Exists(files["B"]), Is.True);
+        Assert.That(output, Does.StartWith("Problems: 10 errors, 2 warnings\n"));
+        Assert.That(error, Is.EqualTo("--strict: 10 errors, so exit code 1\n"));
+    }
+
+    [Test]
+    public void With_strict_exits_with_0_when_there_were_only_warnings()
+    {
+        var measurements = InFolder("measurements.csv");
+        var priceBook = InFolder("pricebook.csv");
+        File.WriteAllText(measurements, "Plan,Trade,Code,Quantity,Unit\nGround Floor,Plasterboard,PB-10,10,m2\nGround Floor,Plasterboard,PB-10,-1,m2\n");
+        File.WriteAllText(priceBook, "Code,Description,Unit,Rate,WastePercent\nPB-10,10mm plasterboard sheet,m2,18.50,10\n");
+
+        var (exitCode, output, error) = Run("--strict", measurements, priceBook, InFolder("boq.csv"));
+
+        Assert.That(exitCode, Is.EqualTo(0));
+        Assert.That(output, Does.StartWith("Problems: 0 errors, 1 warning\n"));
+        Assert.That(error, Is.Empty);
+    }
+
+    [TestCase("--strcit")]
+    [TestCase("-strict")]
+    [TestCase("--STRICT")]
+    public void Prints_how_to_use_it_for_a_flag_it_does_not_know(string flag)
+    {
+        var measurements = CopySample("measurements.csv");
+        var priceBook = CopySample("pricebook.csv");
+        var previousFolder = Environment.CurrentDirectory;
+        Environment.CurrentDirectory = _folder;
+        try
+        {
+            var (exitCode, output, error) = Run(measurements, priceBook, flag);
+
+            Assert.That(exitCode, Is.EqualTo(1));
+            Assert.That(output, Is.Empty);
+            Assert.That(error, Does.StartWith("Usage: "));
+            Assert.That(File.Exists(InFolder(flag)), Is.False);
+        }
+        finally
+        {
+            Environment.CurrentDirectory = previousFolder;
+        }
     }
 }

@@ -4,23 +4,30 @@ namespace BoqGenerator;
 
 // The command line program: reads the two input files, writes the BOQ and prints the report.
 // Returns the exit code: 0 when the BOQ was written (even if some rows had problems), 1 otherwise.
+// With --strict, a run whose data had any Errors also exits with 1, after writing the BOQ as usual.
 // Every expected failure is a one-line message on the error output, never a crash.
 public static class App
 {
     private const string Usage =
-        "Usage: dotnet run --project src/BoqGenerator -- <measurements.csv> <pricebook.csv> [output.csv]";
+        "Usage: dotnet run --project src/BoqGenerator -- [--strict] <measurements.csv> <pricebook.csv> [output.csv]";
+
+    private const string StrictFlag = "--strict";
 
     public static int Run(string[] args, TextWriter output, TextWriter error)
     {
-        if (args.Length is < 2 or > 3)
+        // --strict can go anywhere. Any other word starting with "-" is a mistyped flag, never a file name
+        // (a file whose name starts with "-" can be given as ./-file.csv).
+        var strict = args.Contains(StrictFlag);
+        var files = args.Where(arg => arg != StrictFlag).ToArray();
+        if (files.Length is < 2 or > 3 || files.Any(arg => arg.StartsWith('-')))
         {
             error.WriteLine(Usage);
             return 1;
         }
 
-        var measurementsFile = args[0];
-        var priceBookFile = args[1];
-        var outputFile = args.Length == 3 ? args[2] : "boq.csv";
+        var measurementsFile = files[0];
+        var priceBookFile = files[1];
+        var outputFile = files.Length == 3 ? files[2] : "boq.csv";
 
         if (CheckFiles(measurementsFile, priceBookFile, outputFile) is { } fileProblem)
         {
@@ -61,6 +68,14 @@ public static class App
         }
 
         ConsoleReport.Write(generated.Problems, priceBookFile, generated.Boq, outputFile, output);
+
+        var errors = generated.Problems.Count(problem => problem.IsError);
+        if (strict && errors > 0)
+        {
+            error.WriteLine($"{StrictFlag}: {Words.Plural(errors, "error")}, so exit code 1");
+            return 1;
+        }
+
         return 0;
     }
 

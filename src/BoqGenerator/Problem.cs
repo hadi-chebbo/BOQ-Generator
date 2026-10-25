@@ -9,4 +9,7 @@ public enum Severity
     Error,
 }
 
-public sealed record Problem(string File, int Line, Severity Severity, string Message);
+public sealed record Problem(string File, int Line, Severity Severity, string Message)
+{
+    public bool IsError => Severity == Severity.Error;
+}

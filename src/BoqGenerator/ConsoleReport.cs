@@ -13,7 +13,7 @@ public static class ConsoleReport
         WriteMoney(boq, writer);
         writer.WriteLine();
 
-        writer.WriteLine($"BOQ written to {outputPath} ({Plural(boq.Lines.Count, "line")}).");
+        writer.WriteLine($"BOQ written to {outputPath} ({Words.Plural(boq.Lines.Count, "line")}).");
     }
 
     // The price book's problems come first, because measurement problems point at them
@@ -26,9 +26,9 @@ public static class ConsoleReport
             return;
         }
 
-        var errors = problems.Count(problem => problem.Severity == Severity.Error);
+        var errors = problems.Count(problem => problem.IsError);
         var warnings = problems.Count - errors;
-        writer.WriteLine($"Problems: {Plural(errors, "error")}, {Plural(warnings, "warning")}");
+        writer.WriteLine($"Problems: {Words.Plural(errors, "error")}, {Words.Plural(warnings, "warning")}");
 
         var ordered = problems
             .OrderBy(problem => problem.File == priceBookFile ? 0 : 1)
@@ -46,9 +46,6 @@ public static class ConsoleReport
                 $"  {Location(problem).PadRight(locationWidth)}  {problem.Severity.ToString().PadRight(severityWidth)}  {problem.Message}");
         }
     }
-
-    // "1 error", "3 errors".
-    private static string Plural(int count, string thing) => $"{count} {thing}{(count == 1 ? "" : "s")}";
 
     // The amounts line up in one column so they're easy to read and check.
     private static void WriteMoney(PricedBoq boq, TextWriter writer)
