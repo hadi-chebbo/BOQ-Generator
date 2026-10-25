@@ -12,7 +12,8 @@ public class BoqPricerTests
         "CS-DWN,LED downlight,EA,38.00,5\n" +
         "DR-820,820mm hollow-core door,EA,185.00,0\n" +
         "SK-68,68mm pine skirting,m,9.45,5\n" +
-        "SEAL-1,Sealant (rate with 3 decimals),m2,18.505,0\n";
+        "SEAL-1,Sealant (rate with 3 decimals),m2,18.505,0\n" +
+        "FIX-1,Fixing kit,EA,12.25,0\n";
 
     // Builds the BOQ lines with the real parsers and builder, so the inputs look like the real files.
     private static PricedBoq Price(string measurementRows)
@@ -143,5 +144,64 @@ public class BoqPricerTests
             ("TL-FLR", 1763.20m),
             ("TL-WALL", 2047.50m),
         }));
+    }
+
+    [Test]
+    public void Adds_up_the_line_totals_of_each_trade()
+    {
+        var result = Price(
+            "Ground Floor,Plasterboard,PB-10,10,m2\n" +
+            "Ground Floor,Electrical,CS-DWN,2,EA\n" +
+            "Ground Floor,Tiling,TL-FLR,24.6,m2\n" +
+            "Ground Floor,Electrical,DR-820,1,EA\n");
+
+        // Electrical: 3 x 38.00 + 1 x 185.00; Plasterboard: 11 x 18.50; Tiling: 27.55 x 64.00.
+        Assert.That(result.Trades.Select(trade => (trade.Trade, trade.Subtotal)), Is.EqualTo(new[]
+        {
+            ("Electrical", 299.00m),
+            ("Plasterboard", 203.50m),
+            ("Tiling", 1763.20m),
+        }));
+    }
+
+    [Test]
+    public void Adds_gst_to_the_total_and_rounds_a_half_cent_away_from_zero()
+    {
+        // 12.25 excluding GST; GST is 1.225, which rounds to 1.23 (rounding to even would give 1.22).
+        var result = Price("Ground Floor,Joinery,FIX-1,1,EA\n");
+
+        Assert.That(result.TotalExcludingGst, Is.EqualTo(12.25m));
+        Assert.That(result.Gst, Is.EqualTo(1.23m));
+        Assert.That(result.TotalIncludingGst, Is.EqualTo(13.48m));
+    }
+
+    [Test]
+    public void Works_out_the_subtotals_and_totals_for_the_sample_files()
+    {
+        var result = BoqPricer.Price(SampleFiles.BuildBoq().Lines, "measurements.csv");
+
+        Assert.That(result.Trades.Select(trade => (trade.Trade, trade.Subtotal)), Is.EqualTo(new[]
+        {
+            ("Carpentry", 3025.33m),
+            ("Electrical", 1026.00m),
+            ("Joinery", 4912.50m),
+            ("Painting", 5396.67m),
+            ("Plasterboard", 6359.72m),
+            ("Tiling", 3810.70m),
+        }));
+        Assert.That(result.TotalExcludingGst, Is.EqualTo(24530.92m));
+        Assert.That(result.Gst, Is.EqualTo(2453.09m));
+        Assert.That(result.TotalIncludingGst, Is.EqualTo(26984.01m));
+    }
+
+    [Test]
+    public void Prices_an_empty_boq_at_zero()
+    {
+        var result = BoqPricer.Price(Array.Empty<BoqLine>(), "measurements.csv");
+
+        Assert.That(result.Trades, Is.Empty);
+        Assert.That(result.TotalExcludingGst, Is.EqualTo(0m));
+        Assert.That(result.Gst, Is.EqualTo(0m));
+        Assert.That(result.TotalIncludingGst, Is.EqualTo(0m));
     }
 }
