@@ -29,7 +29,8 @@ dotnet run --project src/BoqGenerator -- data/measurements.csv data/pricebook.cs
   - `Input/`: turning rows into price items and measurements (numbers, units, matching codes)
   - `Boq/`: building the BOQ lines and pricing them
   - `Output/`: writing `boq.csv`, `boq.md` and the console report
-- `tests/BoqGenerator.Tests/`: NUnit tests, one file per class
+- `tests/BoqGenerator.Tests/`: NUnit tests, one file per main class; small helpers are tested through
+  the classes that use them
 - `data/`: the sample CSVs
 
 ### How it works
