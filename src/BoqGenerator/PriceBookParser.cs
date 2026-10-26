@@ -26,7 +26,7 @@ public static class PriceBookParser
 
         var copiesByCode = checkedRows
             .Where(row => row.Code.Length > 0)
-            .GroupBy(row => PriceBook.Key(row.Code));
+            .GroupBy(row => MatchKey.For(row.Code));
 
         foreach (var copies in copiesByCode)
         {

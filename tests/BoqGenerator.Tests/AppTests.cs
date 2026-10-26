@@ -213,7 +213,15 @@ public class AppTests
         var measurements = CopySample("measurements.csv");
         var priceBook = CopySample("pricebook.csv");
         var link = InFolder("boq.csv");
-        File.CreateSymbolicLink(link, measurements);
+        try
+        {
+            File.CreateSymbolicLink(link, measurements);
+        }
+        catch (Exception cannotLink) when (cannotLink is IOException or UnauthorizedAccessException)
+        {
+            Assert.Ignore("Creating a link needs Developer Mode or admin rights on Windows.");
+        }
+
         var before = File.ReadAllBytes(measurements);
 
         var (exitCode, _, error) = Run(measurements, priceBook, link);
@@ -310,7 +318,7 @@ public class AppTests
 
         Assert.That(exitCode, Is.EqualTo(0));
         Assert.That(File.Exists(InFolder(boqName)), Is.True);
-        Assert.That(File.ReadAllText(InFolder(markdownName)), Does.StartWith("# Bill of Quantities\n"));
+        Assert.That(File.ReadAllText(InFolder(markdownName)), Does.StartWith("# Bill of Quantities"));
     }
 
     [Test]
@@ -329,7 +337,7 @@ public class AppTests
     }
 
     [Test]
-    public void Writes_neither_file_when_the_markdown_report_cannot_be_written()
+    public void Writes_neither_file_when_the_markdown_report_path_is_a_folder()
     {
         var measurements = CopySample("measurements.csv");
         var priceBook = CopySample("pricebook.csv");

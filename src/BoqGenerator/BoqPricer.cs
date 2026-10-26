@@ -22,7 +22,7 @@ public sealed record PricedTrade(string Trade, IReadOnlyList<PricedLine> Lines)
 }
 
 // The whole BOQ priced, trade by trade. The totals are worked out from the trades, so they always agree.
-public sealed record PricedBoq(IReadOnlyList<PricedTrade> Trades, IReadOnlyList<Problem> Problems)
+public sealed record PricedBoq(IReadOnlyList<PricedTrade> Trades)
 {
     // Goods and Services Tax, added to the total excluding GST.
     private const decimal GstRate = 0.10m;
@@ -44,10 +44,13 @@ public sealed record PricedBoq(IReadOnlyList<PricedTrade> Trades, IReadOnlyList<
     };
 }
 
+// The priced BOQ and the problems found while pricing it.
+public sealed record BoqPricingResult(PricedBoq Boq, IReadOnlyList<Problem> Problems);
+
 // Works out the money for the BOQ: each line's quantity with waste and line total, grouped into trades.
 public static class BoqPricer
 {
-    public static PricedBoq Price(IReadOnlyList<BoqLine> lines, string measurementsFile)
+    public static BoqPricingResult Price(IReadOnlyList<BoqLine> lines, string measurementsFile)
     {
         var problems = new List<Problem>();
         var pricedLines = lines.Select(line => PriceLine(line, measurementsFile, problems)).ToList();
@@ -58,7 +61,7 @@ public static class BoqPricer
             .Select(trade => new PricedTrade(trade.First().Trade, trade.ToList()))
             .ToList();
 
-        return new PricedBoq(trades, problems);
+        return new BoqPricingResult(new PricedBoq(trades), problems);
     }
 
     private static PricedLine PriceLine(BoqLine line, string measurementsFile, List<Problem> problems)

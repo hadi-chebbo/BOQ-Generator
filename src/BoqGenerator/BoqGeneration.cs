@@ -20,6 +20,6 @@ public static class BoqGeneration
             .Concat(lines.Problems)
             .Concat(priced.Problems)
             .ToList();
-        return new GeneratedBoq(priced, problems);
+        return new GeneratedBoq(priced.Boq, problems);
     }
 }

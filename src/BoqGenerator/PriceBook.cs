@@ -15,25 +15,22 @@ public sealed class PriceBook
     {
         foreach (var item in items)
         {
-            _items.Add(Key(item.Code), item);
+            _items.Add(MatchKey.For(item.Code), item);
         }
 
         foreach (var code in leftOut)
         {
-            _leftOut.Add(Key(code.Code), code);
+            _leftOut.Add(MatchKey.For(code.Code), code);
         }
     }
 
-    public bool TryFind(string code, out PriceItem item) => _items.TryGetValue(Key(code), out item!);
+    public bool TryFind(string code, out PriceItem item) => _items.TryGetValue(MatchKey.For(code), out item!);
 
     // Whether the code was in the price book but left out, and on which lines.
     public bool TryFindLeftOut(string code, out IReadOnlyList<int> lines)
     {
-        var found = _leftOut.TryGetValue(Key(code), out var leftOut);
+        var found = _leftOut.TryGetValue(MatchKey.For(code), out var leftOut);
         lines = found ? leftOut!.Lines : Array.Empty<int>();
         return found;
     }
-
-    // When two item codes are the same, shared with the parser's duplicate check.
-    internal static string Key(string code) => MatchKey.For(code);
 }

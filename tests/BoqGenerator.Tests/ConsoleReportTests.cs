@@ -128,7 +128,7 @@ public class ConsoleReportTests
         };
         var writer = new StringWriter { NewLine = "\n" };
 
-        ConsoleReport.Write(problems, "pricebook.csv", new PricedBoq(Array.Empty<PricedTrade>(), problems), "boq.csv", "boq.md", writer);
+        ConsoleReport.Write(problems, "pricebook.csv", new PricedBoq(Array.Empty<PricedTrade>()), "boq.csv", "boq.md", writer);
 
         var messages = writer.ToString().Split('\n').Skip(1).Take(4).Select(line => line[^1..]);
         Assert.That(messages, Is.EqualTo(new[] { "A", "B", "D", "C" }));

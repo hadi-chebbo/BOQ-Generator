@@ -16,13 +16,15 @@ public class BoqPricerTests
         "FIX-1,Fixing kit,EA,12.25,0\n";
 
     // Builds the BOQ lines with the real parsers and builder, so the inputs look like the real files.
-    private static PricedBoq Price(string measurementRows)
+    private static BoqPricingResult PriceWithProblems(string measurementRows)
     {
         var measurements = MeasurementParser.Parse(new StringReader(MeasurementsHeader + measurementRows), "measurements.csv");
         var prices = PriceBookParser.Parse(new StringReader(PriceBook), "pricebook.csv");
         var boq = BoqBuilder.Build(measurements.Measurements, prices.PriceBook, "measurements.csv", "pricebook.csv");
         return BoqPricer.Price(boq.Lines, "measurements.csv");
     }
+
+    private static PricedBoq Price(string measurementRows) => PriceWithProblems(measurementRows).Boq;
 
     [Test]
     public void Adds_waste_to_the_net_quantity_and_rounds_a_half_away_from_zero()
@@ -80,9 +82,9 @@ public class BoqPricerTests
     public void Warns_when_a_quantity_with_waste_rounds_to_zero()
     {
         // 3 mm is 0.003 m; with 5% waste that's 0.00315 m, which rounds to 0.00.
-        var result = Price("Ground Floor,Carpentry,SK-68,3,mm\n");
+        var result = PriceWithProblems("Ground Floor,Carpentry,SK-68,3,mm\n");
 
-        Assert.That(result.Lines.Single().QuantityWithWaste, Is.EqualTo(0m));
+        Assert.That(result.Boq.Lines.Single().QuantityWithWaste, Is.EqualTo(0m));
         Assert.That(result.Problems, Is.EqualTo(new[]
         {
             new Problem("measurements.csv", 2, Severity.Warning, "SK-68 in Carpentry: 0.00315 m rounds to 0.00"),
@@ -92,7 +94,7 @@ public class BoqPricerTests
     [Test]
     public void Adds_no_warning_for_a_line_that_was_already_zero()
     {
-        var result = Price("Ground Floor,Electrical,CS-DWN,0,EA\n");
+        var result = PriceWithProblems("Ground Floor,Electrical,CS-DWN,0,EA\n");
 
         Assert.That(result.Problems, Is.Empty);
     }
@@ -197,7 +199,7 @@ public class BoqPricerTests
     [Test]
     public void Prices_an_empty_boq_at_zero()
     {
-        var result = BoqPricer.Price(Array.Empty<BoqLine>(), "measurements.csv");
+        var result = BoqPricer.Price(Array.Empty<BoqLine>(), "measurements.csv").Boq;
 
         Assert.That(result.Trades, Is.Empty);
         Assert.That(result.TotalExcludingGst, Is.EqualTo(0m));

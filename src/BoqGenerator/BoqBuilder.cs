@@ -63,7 +63,7 @@ public static class BoqBuilder
         }
 
         return priced
-            .GroupBy(each => (Trade: MatchKey.For(each.Measurement.Trade), Code: PriceBook.Key(each.PriceItem.Code)))
+            .GroupBy(each => (Trade: MatchKey.For(each.Measurement.Trade), Code: MatchKey.For(each.PriceItem.Code)))
             .OrderBy(group => group.Key.Trade, StringComparer.Ordinal)
             .ThenBy(group => group.Key.Code, StringComparer.Ordinal)
             .Select(group => new BoqLine(

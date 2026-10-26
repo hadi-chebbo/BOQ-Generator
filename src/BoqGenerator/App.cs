@@ -56,7 +56,6 @@ public static class App
             return 1;
         }
 
-        // The CSV is UTF-8 with a BOM, so Excel shows any non-English character correctly.
         if (!WriteOutputs(generated.Boq, boqFile, markdownFile, error))
         {
             return 1;
@@ -135,7 +134,7 @@ public static class App
     }
 
     // Writes the BOQ and the Markdown report together: both are written to temporary files first and only put in
-    // place once both succeeded, so a failure never leaves a new BOQ next to an old report (or half a file).
+    // place once both were written, so a failure while writing leaves the previous files as they were.
     private static bool WriteOutputs(PricedBoq boq, string boqFile, string markdownFile, TextWriter error)
     {
         var boqTemporary = boqFile + ".tmp";
@@ -164,11 +163,15 @@ public static class App
         }
     }
 
+    // Tidies up a temporary file after a failed write. If even that fails, the original error is what matters.
     private static void DeleteIfThere(string file)
     {
-        if (File.Exists(file))
+        try
         {
             File.Delete(file);
+        }
+        catch (Exception cannotDelete) when (cannotDelete is IOException or UnauthorizedAccessException)
+        {
         }
     }
 
@@ -197,7 +200,8 @@ public static class App
     {
         UnauthorizedAccessException => "permission denied",
         DirectoryNotFoundException => "its folder does not exist",
-        _ when exception.Message.Contains("being used by another process") => "it is open in another program",
+        // Windows' "sharing violation" error code: another program (often Excel) has the file open.
+        IOException when (exception.HResult & 0xFFFF) == 32 => "it is open in another program",
         _ => "the file could not be opened",
     };
 }
