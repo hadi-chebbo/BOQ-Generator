@@ -23,8 +23,13 @@ dotnet run --project src/BoqGenerator -- data/measurements.csv data/pricebook.cs
 
 ### Project structure
 
-- `src/BoqGenerator/`: the console app
-- `tests/BoqGenerator.Tests/`: NUnit tests
+- `src/BoqGenerator/`: the console app. `App.cs` is the program, `BoqGeneration.cs` runs the pipeline,
+  and the folders follow its steps:
+  - `Csv/`: reading a CSV file row by row
+  - `Input/`: turning rows into price items and measurements (numbers, units, matching codes)
+  - `Boq/`: building the BOQ lines and pricing them
+  - `Output/`: writing `boq.csv`, `boq.md` and the console report
+- `tests/BoqGenerator.Tests/`: NUnit tests, one file per class
 - `data/`: the sample CSVs
 
 ### How it works
